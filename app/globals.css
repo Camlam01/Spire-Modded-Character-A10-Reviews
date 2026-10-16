@@ -286,3 +286,4 @@ details.discussion:not(.inline) { background: var(--surface); border: 1px solid 
 .admin-box > summary { cursor: pointer; color: var(--muted); }
 .review-head strong a { color: inherit; text-decoration: none; }
 .review-head strong a:hover { text-decoration: underline; }
+.db-failures { margin: 0; padding-left: 1.2em; display: grid; gap: 4px; font-size: .9rem; overflow-wrap: anywhere; }

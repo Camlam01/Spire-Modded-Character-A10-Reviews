@@ -10,32 +10,45 @@ function db(): SupabaseClient {
   return client;
 }
 
-export type DatabaseProblem = "missing_tables" | "outdated_tables" | "bad_key" | "unreachable";
+/** Every table and view the site reads. The setup check tries each one. */
+const DB_OBJECTS = [
+  "players", "mods", "reviews", "comments", "review_votes", "rate_events", "character_runs",
+  "mod_metric_stats", "player_mod_run_stats", "known_characters",
+] as const;
+
+export type DatabaseProblem = {
+  kind: "missing_tables" | "bad_key" | "unreachable";
+  failures: { object: string; message: string }[];
+};
 let databaseOk = false;
 
 /**
- * Whether the database is reachable and set up, so a half-finished setup shows instructions instead of a crash.
- * Checks a table from the newest migration; remembered once it passes.
+ * Whether the database is reachable and fully set up, so a half-finished setup shows instructions (naming each table
+ * or view that failed, with Supabase's own message) instead of crashing. Remembered once it passes.
  */
 export async function databaseProblem(): Promise<DatabaseProblem | null> {
   if (databaseOk) return null;
+  let results: { object: string; message: string | null }[];
   try {
-    const [first, newest] = await Promise.all([
-      db().from("players").select("steam_id", { head: true, count: "exact" }).limit(1),
-      db().from("character_runs").select("steam_id", { head: true, count: "exact" }).limit(1),
-    ]);
-    const err = first.error ?? newest.error;
-    if (!err) { databaseOk = true; return null; }
-    const text = `${err.code ?? ""} ${err.message ?? ""}`;
-    if (/PGRST301|PGRST302|401|403|JWT|Invalid API key|permission denied/i.test(text)) return "bad_key";
-    if (/PGRST205|42P01|does not exist|Could not find the table/i.test(text)) return first.error ? "missing_tables" : "outdated_tables";
-    if (/fetch failed|ENOTFOUND|ECONNREFUSED|timeout/i.test(text)) return "unreachable";
-    console.error("Database check failed", err);
-    return "unreachable";
+    results = await Promise.all(
+      DB_OBJECTS.map(async (object) => {
+        const { error } = await db().from(object).select("*", { head: true }).limit(1);
+        return { object, message: error ? `${error.code ? `${error.code}: ` : ""}${error.message || "unknown error"}` : null };
+      }),
+    );
   } catch (e) {
     console.error("Database check failed", e);
-    return "unreachable";
+    return { kind: "unreachable", failures: [{ object: "connection", message: e instanceof Error ? e.message : String(e) }] };
   }
+  const failures = results.filter((r): r is { object: string; message: string } => r.message !== null);
+  if (!failures.length) { databaseOk = true; return null; }
+  console.error("Database check failed", failures);
+  const text = failures.map((f) => f.message).join(" ");
+  const kind =
+    /PGRST301|PGRST302|\b401\b|\b403\b|JWT|Invalid API key|permission denied|42501/i.test(text) ? "bad_key"
+    : /PGRST205|42P01|does not exist|Could not find the table/i.test(text) ? "missing_tables"
+    : "unreachable";
+  return { kind, failures };
 }
 
 function check<T>(res: { data: T; error: { message: string } | null }): T {
