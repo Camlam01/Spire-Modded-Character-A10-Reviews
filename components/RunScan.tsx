@@ -7,50 +7,8 @@ import { characterName, parseRunFile, SKIP_LABELS, tallyRuns, type RunSkip, type
 type Found = { file: File; path: string };
 interface Scan { files: number; runs: RunSummary[]; skips: Partial<Record<RunSkip, number>> }
 
-/* ---------- remembering the folder (Chrome and Edge) ---------- */
-
-// Minimal typings for the File System Access API, which TypeScript's DOM library doesn't fully include.
-type DirHandle = {
-  kind: "directory"; name: string;
-  entries(): AsyncIterable<[string, DirHandle | FileHandle]>;
-  queryPermission(o: { mode: "read" }): Promise<PermissionState>;
-  requestPermission(o: { mode: "read" }): Promise<PermissionState>;
-};
-type FileHandle = { kind: "file"; name: string; getFile(): Promise<File> };
-const picker = () => (globalThis as unknown as { showDirectoryPicker?: (o?: object) => Promise<DirHandle> }).showDirectoryPicker;
-
-const IDB = { db: "sts2r", store: "handles", key: "runFolder" };
-function idb<T>(mode: IDBTransactionMode, run: (s: IDBObjectStore) => IDBRequest): Promise<T | undefined> {
-  return new Promise((resolve) => {
-    try {
-      const open = indexedDB.open(IDB.db, 1);
-      open.onupgradeneeded = () => open.result.createObjectStore(IDB.store);
-      open.onerror = () => resolve(undefined);
-      open.onsuccess = () => {
-        const req = run(open.result.transaction(IDB.store, mode).objectStore(IDB.store));
-        req.onsuccess = () => resolve(req.result as T);
-        req.onerror = () => resolve(undefined);
-      };
-    } catch { resolve(undefined); }
-  });
-}
-const loadHandle = () => idb<DirHandle>("readonly", (s) => s.get(IDB.key));
-const saveHandle = (h: DirHandle) => idb("readwrite", (s) => s.put(h, IDB.key));
-const forgetHandle = () => idb("readwrite", (s) => s.delete(IDB.key));
-
-async function filesFromHandle(dir: DirHandle, prefix = dir.name): Promise<Found[]> {
-  const out: Found[] = [];
-  for await (const [name, h] of dir.entries()) {
-    const path = `${prefix}/${name}`;
-    if (h.kind === "directory") {
-      if (/^(shader_cache|vulkan|logs|sentry|mods)$/i.test(name)) continue; // big folders with no runs
-      out.push(...(await filesFromHandle(h, path)));
-    } else if (name.endsWith(".run")) {
-      out.push({ file: await h.getFile(), path });
-    }
-  }
-  return out;
-}
+// The browser's standard folder picker (an <input> with webkitdirectory) is used rather than the File System Access
+// API: Chrome refuses that API for anything under AppData, which is where STS2 keeps its run history.
 
 /** Collect .run files under a dropped folder (drag and drop gives entries, not a flat file list). */
 async function filesFromDrop(items: DataTransferItemList): Promise<Found[]> {
@@ -74,16 +32,11 @@ async function filesFromDrop(items: DataTransferItemList): Promise<Found[]> {
   return out;
 }
 
-/* ---------- component ---------- */
-
 /** Windows' folder picker understands %AppData%, so pasting this jumps straight to the run history. */
 const RUNS_PATH = String.raw`%AppData%\SlayTheSpire2\steam`;
 
 export function RunScan({ viewerId, lastScanned }: { viewerId: string; lastScanned: string | null }) {
   const folderInput = useRef<HTMLInputElement>(null);
-  const formRef = useRef<HTMLFormElement>(null);
-  const [remembered, setRemembered] = useState<DirHandle | null>(null);
-  const [canRemember, setCanRemember] = useState(false);
   const [scan, setScan] = useState<Scan | null>(null);
   const [payload, setPayload] = useState("");
   const [reading, setReading] = useState(false);
@@ -95,11 +48,9 @@ export function RunScan({ viewerId, lastScanned }: { viewerId: string; lastScann
 
   useEffect(() => {
     folderInput.current?.setAttribute("webkitdirectory", ""); // React has no prop for folder pickers
-    setCanRemember(!!picker());
-    loadHandle().then((h) => { if (h) setRemembered(h); });
   }, []);
 
-  // Read the files, then send the qualifying runs straight away.
+  // Read the files, then send the per-character counts straight away.
   const read = async (found: Found[]) => {
     setReading(true);
     setProblem("");
@@ -137,29 +88,6 @@ export function RunScan({ viewerId, lastScanned }: { viewerId: string; lastScann
     }
   };
 
-  const pickWithHandle = async () => {
-    try {
-      const h = await picker()!({ id: "sts2-runs", mode: "read" });
-      await saveHandle(h);
-      setRemembered(h);
-      await read(await filesFromHandle(h));
-    } catch (e) {
-      if ((e as DOMException)?.name !== "AbortError") setProblem("That folder couldn’t be read. Try choosing it again.");
-    }
-  };
-  const rescan = async () => {
-    if (!remembered) return;
-    try {
-      const ok = (await remembered.queryPermission({ mode: "read" })) === "granted" || (await remembered.requestPermission({ mode: "read" })) === "granted";
-      if (!ok) { setProblem("Your browser didn’t allow reading the folder. Choose it again below."); return; }
-      await read(await filesFromHandle(remembered));
-    } catch {
-      setProblem("The remembered folder couldn’t be read. It may have moved; choose it again below.");
-      await forgetHandle();
-      setRemembered(null);
-    }
-  };
-
   const tally = scan ? tallyRuns(scan.runs) : null;
   const busy = reading || pending;
 
@@ -169,48 +97,40 @@ export function RunScan({ viewerId, lastScanned }: { viewerId: string; lastScann
       <p>
         This lists the characters you’ve played at Ascension 10 on your profile and counts toward every mod you review.
         Your files are read in your browser and never uploaded. Finished solo A10 runs are counted, wins and losses alike,
-        and only the totals are sent: each character’s A10 run count and the date of its latest run. Each scan updates
-        the characters it finds.
+        and only the totals are sent: each character’s A10 run count and the date of its latest run. Rescan whenever
+        you’ve played more; each scan updates the characters it finds.
       </p>
       <p className="by">{lastScanned ? `Last scanned ${new Date(lastScanned).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}.` : "You haven’t scanned your runs yet."}</p>
 
-      {remembered ? (
-        <div className="actions">
-          <button type="button" className="btn primary" onClick={rescan} disabled={busy}>Rescan “{remembered.name}”</button>
-          <button type="button" className="linkish" onClick={async () => { await forgetHandle(); setRemembered(null); }}>Forget this folder</button>
-        </div>
-      ) : null}
-
-      <details open={!remembered}>
-        <summary>{remembered ? "Choose a different folder" : "First time: point the site at your run history"}</summary>
+      <ol className="pick-steps">
+        <li>
+          <div className="actions">
+            <button type="button" className="btn" onClick={copyPath}>{copied ? "Copied ✓" : "Copy folder path"}</button>
+            <code className="path-inline" id="runs-path">{RUNS_PATH}</code>
+          </div>
+        </li>
+        <li>
+          <div className="actions">
+            <label className={`btn primary${busy ? " disabled" : ""}`} htmlFor="run-folder">{lastScanned ? "Choose folder and rescan" : "Choose folder"}</label>
+            <input id="run-folder" ref={folderInput} type="file" multiple className="sr-only" disabled={busy}
+              onChange={(e) => {
+                const files = e.target.files;
+                if (files) read([...files].map((file) => ({ file, path: file.webkitRelativePath || file.name })));
+                e.target.value = ""; // lets the same folder be chosen again for a rescan
+              }} />
+          </div>
+        </li>
+        <li>
+          In the window that opens, click the <strong>address bar</strong> at the top, press <kbd>Ctrl</kbd>+<kbd>V</kbd> and{" "}
+          <kbd>Enter</kbd>, then click <strong>Upload</strong> or <strong>Select Folder</strong>. Your browser then asks whether to
+          “upload” the files; that’s its standard wording. Allow it: they’re read on this page and never uploaded.
+        </li>
+      </ol>
+      <details>
+        <summary>On a Mac or Linux, or prefer drag and drop?</summary>
         <div className="steps-inner">
-          <ol className="pick-steps">
-            <li>
-              <div className="actions">
-                <button type="button" className="btn" onClick={copyPath}>{copied ? "Copied ✓" : "Copy folder path"}</button>
-                <code className="path-inline" id="runs-path">{RUNS_PATH}</code>
-              </div>
-            </li>
-            <li>
-              <div className="actions">
-                {canRemember ? (
-                  <button type="button" className="btn primary" onClick={pickWithHandle} disabled={busy}>Choose folder</button>
-                ) : (
-                  <label className="btn primary" htmlFor="run-folder">Choose folder</label>
-                )}
-                <input id="run-folder" ref={folderInput} type="file" multiple className="sr-only"
-                  onChange={(e) => e.target.files && read([...e.target.files].map((file) => ({ file, path: file.webkitRelativePath || file.name })))} />
-              </div>
-            </li>
-            <li>
-              In the window that opens, click the <strong>address bar</strong> at the top, press <kbd>Ctrl</kbd>+<kbd>V</kbd> and{" "}
-              <kbd>Enter</kbd>, then click <strong>Select Folder</strong>. If your browser asks to let the site view or “upload”
-              the files, allow it: they’re read here and never uploaded.
-            </li>
-          </ol>
           <p className="by">
-            {canRemember ? "Your browser will remember this folder, so after today rescanning is one click. " : "Chrome and Edge can remember the folder for one-click rescans. "}
-            On Mac and Linux the folder is probably <code>~/Library/Application Support/SlayTheSpire2/steam</code> or{" "}
+            On Mac the folder is probably <code>~/Library/Application Support/SlayTheSpire2/steam</code>, and on Linux and Steam Deck
             <code>~/.local/share/SlayTheSpire2/steam</code>. You can also drag the folder onto the box below.
           </p>
           <div
@@ -239,9 +159,8 @@ export function RunScan({ viewerId, lastScanned }: { viewerId: string; lastScann
       ) : null}
       {state?.error ? <p className="notice error" role="alert">{state.error}</p> : null}
       {state?.message && !busy ? <p className="notice" role="status">{state.message}</p> : null}
-      {/* Kept so the last payload can be resent by keyboard users if the automatic save failed. */}
       {state?.error && payload ? (
-        <form ref={formRef} action={formAction}><input type="hidden" name="payload" value={payload} /><button type="submit" className="btn small">Try saving again</button></form>
+        <form action={formAction}><input type="hidden" name="payload" value={payload} /><button type="submit" className="btn small">Try saving again</button></form>
       ) : null}
     </section>
   );

@@ -292,3 +292,4 @@ details.discussion:not(.inline) { background: var(--surface); border: 1px solid 
 .path-inline { background: var(--raised); border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px; user-select: all; overflow-wrap: anywhere; }
 kbd { font: inherit; font-size: .85em; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; background: var(--raised); }
 .dropzone.small { padding: 12px; justify-items: center; }
+.btn.disabled { opacity: .55; pointer-events: none; }
