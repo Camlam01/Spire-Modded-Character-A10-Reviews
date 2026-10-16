@@ -166,8 +166,10 @@ const toAuthor = (steamId: string, p: PlayerRow | null): Author => ({
   profileUrl: p?.profile_url ?? null,
 });
 
+// Joins name their foreign key ("table!constraint"): tables like comments and review_votes link reviews, mods and
+// players a second way, and Supabase refuses a join it finds ambiguous.
 const MOD_COLUMNS =
-  "id, workshop_id, title, description, preview_url, creator_name, created_at, workshop_updated_at, workshop_created_at, subscriptions, character_ids, reviews(count)";
+  "id, workshop_id, title, description, preview_url, creator_name, created_at, workshop_updated_at, workshop_created_at, subscriptions, character_ids, reviews!reviews_mod_id_fkey(count)";
 
 async function myReviewedModIds(steamId: string | null): Promise<Set<string>> {
   if (!steamId) return new Set();
@@ -262,7 +264,7 @@ export async function getReviews(modId: string, viewer: string | null): Promise<
   const rows = check(
     await db()
       .from("reviews")
-      .select("id, steam_id, notes, scores, metric_notes, created_at, updated_at, players(persona_name, avatar_url, profile_url, owns_game, playtime_minutes), review_votes(steam_id)")
+      .select("id, steam_id, notes, scores, metric_notes, created_at, updated_at, players!reviews_steam_id_fkey(persona_name, avatar_url, profile_url, owns_game, playtime_minutes), review_votes!review_votes_review_id_fkey(steam_id)")
       .eq("mod_id", modId)
       .order("updated_at", { ascending: false }),
   ) as unknown as {
@@ -374,7 +376,7 @@ export async function getPlayerProfile(steamId: string) {
 
 export async function getPlayerReviews(steamId: string) {
   return check(
-    await db().from("reviews").select("id, scores, updated_at, mods(id, title)").eq("steam_id", steamId).order("updated_at", { ascending: false }),
+    await db().from("reviews").select("id, scores, updated_at, mods!reviews_mod_id_fkey(id, title)").eq("steam_id", steamId).order("updated_at", { ascending: false }),
   ) as unknown as { id: string; scores: unknown; updated_at: string; mods: { id: string; title: string } | null }[];
 }
 
@@ -424,7 +426,7 @@ export async function getComments(modId: string): Promise<CommentView[]> {
   const rows = check(
     await db()
       .from("comments")
-      .select("id, review_id, steam_id, body, created_at, players(persona_name, avatar_url, profile_url)")
+      .select("id, review_id, steam_id, body, created_at, players!comments_steam_id_fkey(persona_name, avatar_url, profile_url)")
       .eq("mod_id", modId)
       .order("created_at", { ascending: true })
       .limit(2000),
