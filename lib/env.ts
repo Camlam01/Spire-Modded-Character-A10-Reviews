@@ -1,25 +1,58 @@
 import "server-only";
+import { createHmac } from "node:crypto";
 
-const REQUIRED = ["SITE_URL", "SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY", "STEAM_API_KEY", "SESSION_SECRET"] as const;
+// Settings come from .env.local locally, or from the host's environment variables. Several have fallbacks so a
+// Vercel deployment with the Supabase integration needs only STEAM_API_KEY added by hand.
+
+const first = (...names: string[]) => names.map((n) => process.env[n]).find((v) => !!v) || "";
+
+/** The site's public address. Steam sends players back here after sign-in, so it must match what they visit. */
+function resolveSiteUrl(): string {
+  if (process.env.SITE_URL) return process.env.SITE_URL;
+  // Vercel sets these itself: the production domain, or this deployment's own address on preview builds.
+  if (process.env.VERCEL_ENV === "production" && process.env.VERCEL_PROJECT_PRODUCTION_URL) {
+    return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
+  }
+  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
+  if (process.env.NODE_ENV !== "production") return "http://localhost:3000";
+  return "";
+}
+
+// The Vercel Supabase integration may use either name for each value.
+const supabaseUrl = () => first("SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_URL");
+const supabaseKey = () => first("SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_SECRET_KEY");
 
 /** Names of required settings that are missing, so the site can show a setup page instead of crashing. */
-export const missingEnv = (): string[] => REQUIRED.filter((k) => !process.env[k]);
+export function missingEnv(): string[] {
+  const missing: string[] = [];
+  if (!resolveSiteUrl()) missing.push("SITE_URL");
+  if (!supabaseUrl()) missing.push("SUPABASE_URL");
+  if (!supabaseKey()) missing.push("SUPABASE_SERVICE_ROLE_KEY");
+  if (!process.env.STEAM_API_KEY) missing.push("STEAM_API_KEY");
+  return missing;
+}
 
-function need(name: (typeof REQUIRED)[number]): string {
-  const v = process.env[name];
-  if (!v) throw new Error(`Missing ${name}. Copy .env.example to .env.local and fill it in.`);
-  return v;
+function need(name: string, value: string): string {
+  if (!value) throw new Error(`Missing ${name}. Run "npm run setup", or add it to your host's environment variables.`);
+  return value;
 }
 
 export const env = {
-  get siteUrl() { return need("SITE_URL").replace(/\/+$/, ""); },
-  get supabaseUrl() { return need("SUPABASE_URL"); },
-  get supabaseKey() { return need("SUPABASE_SERVICE_ROLE_KEY"); },
-  get steamApiKey() { return need("STEAM_API_KEY"); },
+  get siteUrl() { return need("SITE_URL", resolveSiteUrl()).replace(/\/+$/, ""); },
+  get supabaseUrl() { return need("SUPABASE_URL", supabaseUrl()); },
+  get supabaseKey() { return need("SUPABASE_SERVICE_ROLE_KEY", supabaseKey()); },
+  get steamApiKey() { return need("STEAM_API_KEY", process.env.STEAM_API_KEY || ""); },
+  /**
+   * Signs login cookies. Uses SESSION_SECRET when set; otherwise it's derived from the Supabase secret key, which is
+   * already private to the server. Changing either one signs everyone out.
+   */
   get sessionSecret() {
-    const s = need("SESSION_SECRET");
-    if (s.length < 32) throw new Error("SESSION_SECRET must be at least 32 characters.");
-    return s;
+    const s = process.env.SESSION_SECRET;
+    if (s) {
+      if (s.length < 32) throw new Error("SESSION_SECRET must be at least 32 characters.");
+      return s;
+    }
+    return createHmac("sha256", need("SUPABASE_SERVICE_ROLE_KEY", supabaseKey())).update("sts2r-session-v1").digest("base64url");
   },
   get sts2AppId() { return process.env.STS2_APP_ID || "2868840"; },
   /**
@@ -32,7 +65,7 @@ export const env = {
     const v = process.env.REVIEW_OWNERSHIP;
     return v === "anyone" || v === "verified" ? v : "owners";
   },
-  /** Verified solo runs with a mod's character needed before a player can review it. 0 makes verification optional. */
+  /** Verified A10 runs with a mod's character needed before a player can review it. 0 makes verification optional. */
   get reviewMinRuns(): number {
     const n = Number(process.env.REVIEW_MIN_RUNS ?? 3);
     return Number.isInteger(n) && n >= 0 ? n : 3;
