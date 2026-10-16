@@ -76,6 +76,9 @@ async function filesFromDrop(items: DataTransferItemList): Promise<Found[]> {
 
 /* ---------- component ---------- */
 
+/** Windows' folder picker understands %AppData%, so pasting this jumps straight to the run history. */
+const RUNS_PATH = String.raw`%AppData%\SlayTheSpire2\steam`;
+
 export function RunScan({ viewerId, lastScanned }: { viewerId: string; lastScanned: string | null }) {
   const folderInput = useRef<HTMLInputElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
@@ -86,6 +89,7 @@ export function RunScan({ viewerId, lastScanned }: { viewerId: string; lastScann
   const [reading, setReading] = useState(false);
   const [dragging, setDragging] = useState(false);
   const [problem, setProblem] = useState("");
+  const [copied, setCopied] = useState(false);
   const [state, formAction, pending] = useActionState(scanRunsAction, null);
   const [, startTransition] = useTransition();
 
@@ -110,7 +114,7 @@ export function RunScan({ viewerId, lastScanned }: { viewerId: string; lastScann
     }
     setReading(false);
     setScan({ files, runs, skips });
-    if (!files) { setProblem("No run files were in that folder. Choose the SlayTheSpire2 “steam” folder described above."); return; }
+    if (!files) { setProblem("No run files were in that folder. Copy the folder path above and paste it into the folder window’s address bar."); return; }
     // Only the per-character counts leave the browser.
     const characters = tallyRuns(runs).byCharacter;
     if (!characters.length) return;
@@ -119,6 +123,18 @@ export function RunScan({ viewerId, lastScanned }: { viewerId: string; lastScann
     body.set("payload", json);
     setPayload(json);
     startTransition(() => formAction(body));
+  };
+
+  const copyPath = async () => {
+    try {
+      await navigator.clipboard.writeText(RUNS_PATH);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    } catch {
+      // Clipboard blocked: select the path so the player can press Ctrl+C.
+      const el = document.getElementById("runs-path");
+      if (el) window.getSelection()?.selectAllChildren(el);
+    }
   };
 
   const pickWithHandle = async () => {
@@ -166,35 +182,44 @@ export function RunScan({ viewerId, lastScanned }: { viewerId: string; lastScann
       ) : null}
 
       <details open={!remembered}>
-        <summary>{remembered ? "Choose a different folder" : "Where to find it"}</summary>
+        <summary>{remembered ? "Choose a different folder" : "First time: point the site at your run history"}</summary>
         <div className="steps-inner">
-          <p>On Windows, paste this into the File Explorer address bar and press Enter, then go up one level so you can choose the <code>steam</code> folder:</p>
-          <pre className="path">%AppData%\SlayTheSpire2\steam</pre>
+          <ol className="pick-steps">
+            <li>
+              <div className="actions">
+                <button type="button" className="btn" onClick={copyPath}>{copied ? "Copied ✓" : "Copy folder path"}</button>
+                <code className="path-inline" id="runs-path">{RUNS_PATH}</code>
+              </div>
+            </li>
+            <li>
+              <div className="actions">
+                {canRemember ? (
+                  <button type="button" className="btn primary" onClick={pickWithHandle} disabled={busy}>Choose folder</button>
+                ) : (
+                  <label className="btn primary" htmlFor="run-folder">Choose folder</label>
+                )}
+                <input id="run-folder" ref={folderInput} type="file" multiple className="sr-only"
+                  onChange={(e) => e.target.files && read([...e.target.files].map((file) => ({ file, path: file.webkitRelativePath || file.name })))} />
+              </div>
+            </li>
+            <li>
+              In the window that opens, click the <strong>address bar</strong> at the top, press <kbd>Ctrl</kbd>+<kbd>V</kbd> and{" "}
+              <kbd>Enter</kbd>, then click <strong>Select Folder</strong>. If your browser asks to let the site view or “upload”
+              the files, allow it: they’re read here and never uploaded.
+            </li>
+          </ol>
           <p className="by">
-            It holds a folder named after your Steam ID with every profile’s runs inside, modded and unmodded. On Mac and Linux it’s probably
-            <code>~/Library/Application Support/SlayTheSpire2/steam</code> or <code>~/.local/share/SlayTheSpire2/steam</code>.
+            {canRemember ? "Your browser will remember this folder, so after today rescanning is one click. " : "Chrome and Edge can remember the folder for one-click rescans. "}
+            On Mac and Linux the folder is probably <code>~/Library/Application Support/SlayTheSpire2/steam</code> or{" "}
+            <code>~/.local/share/SlayTheSpire2/steam</code>. You can also drag the folder onto the box below.
           </p>
           <div
-            className={`dropzone${dragging ? " over" : ""}`}
+            className={`dropzone small${dragging ? " over" : ""}`}
             onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
             onDragLeave={() => setDragging(false)}
             onDrop={async (e) => { e.preventDefault(); setDragging(false); await read(await filesFromDrop(e.dataTransfer.items)); }}
           >
-            <p>Drag the folder here, or</p>
-            <div className="actions">
-              {canRemember ? (
-                <button type="button" className="btn primary" onClick={pickWithHandle} disabled={busy}>Choose folder</button>
-              ) : (
-                <label className="btn primary" htmlFor="run-folder">Choose folder</label>
-              )}
-              <input id="run-folder" ref={folderInput} type="file" multiple className="sr-only"
-                onChange={(e) => e.target.files && read([...e.target.files].map((file) => ({ file, path: file.webkitRelativePath || file.name })))} />
-            </div>
-            <p className="by">
-              {canRemember
-                ? "Your browser can remember this folder, so next time rescanning is one click."
-                : "If your browser asks to “upload” the folder, that’s its standard wording; nothing is uploaded. Chrome and Edge can remember the folder for one-click rescans."}
-            </p>
+            <p className="by">Drop your SlayTheSpire2 “steam” folder here</p>
           </div>
         </div>
       </details>
