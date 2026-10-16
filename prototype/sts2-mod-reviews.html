@@ -1,0 +1,681 @@
+<title>STS2 Character Mod Reviews</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alegreya+SC:wght@500;700&family=Alegreya+Sans:wght@400;500;700&display=swap">
+<style>
+/* Layout: a sticky metric switchboard on the left, the ledger of mods on the right; stacks to one column on phones */
+:root {
+  --bg: #eceef2; --surface: #f8f9fb; --raised: #ffffff; --ink: #18202c; --muted: #5a6575; --line: #d4d9e1;
+  --accent: #8f6212; --accent-ink: #fffaf0; --accent-soft: #f1e6cf;
+  --good: #2c7a4b; --mid: #9a6500; --low: #b2392c;
+  --c-aes: #7f4aa8; --c-mech: #2c66a5; --c-bal: #b0432c; --c-ref: #24826f;
+  --font-display: "Alegreya SC", "Palatino Linotype", Georgia, serif;
+  --font-body: "Alegreya Sans", "Segoe UI", system-ui, sans-serif;
+  --r: 10px;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0f131a; --surface: #171d26; --raised: #1d2430; --ink: #e5e8ed; --muted: #98a3b3; --line: #2a3342;
+  --accent: #d8a443; --accent-ink: #1b1405; --accent-soft: #2e2615;
+  --good: #5cc286; --mid: #e2b24c; --low: #ee7262;
+  --c-aes: #b88be0; --c-mech: #6fa6e2; --c-bal: #ea7f65; --c-ref: #5cc2ad;
+  color-scheme: dark;
+} }
+:root[data-theme="dark"] {
+  --bg: #0f131a; --surface: #171d26; --raised: #1d2430; --ink: #e5e8ed; --muted: #98a3b3; --line: #2a3342;
+  --accent: #d8a443; --accent-ink: #1b1405; --accent-soft: #2e2615;
+  --good: #5cc286; --mid: #e2b24c; --low: #ee7262;
+  --c-aes: #b88be0; --c-mech: #6fa6e2; --c-bal: #ea7f65; --c-ref: #5cc2ad;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 16px; line-height: 1.5; }
+h1, h2, h3 { font-family: var(--font-display); font-weight: 700; line-height: 1.15; text-wrap: balance; margin: 0; }
+a { color: var(--accent); }
+button, input, select, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.num { font-variant-numeric: tabular-nums lining-nums; }
+
+.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--surface); border-bottom: 1px solid var(--line);
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.top-in { max-width: 1180px; margin: 0 auto; padding-block: 12px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.brand { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; text-decoration: none; color: inherit; }
+.brand h1 { font-size: 1.35rem; }
+.asc { font-size: .78rem; letter-spacing: .08em; text-transform: uppercase; font-weight: 700; color: var(--c-bal); border: 1px solid currentColor; padding: 1px 8px; border-radius: 999px; }
+.top .spacer { flex: 1; }
+
+.wrap { max-width: 1180px; margin: 0 auto; padding-block: 24px 64px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid; grid-template-columns: 270px minmax(0, 1fr); gap: 28px; align-items: start; }
+@media (max-width: 820px) { .wrap { grid-template-columns: minmax(0, 1fr); gap: 18px; } }
+
+/* Metric switchboard */
+.filters { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 76px); background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); }
+@media (max-width: 820px) { .filters { position: static; } }
+.filters > summary { list-style: none; cursor: pointer; padding: 14px 16px; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.filters > summary::-webkit-details-marker { display: none; }
+.filters > summary h2 { font-size: 1.05rem; }
+.filters .count { color: var(--muted); font-size: .9rem; }
+.filters-body { padding: 0 16px 16px; display: grid; gap: 14px; }
+.filters-body > p { margin: 0; color: var(--muted); font-size: .9rem; }
+.fgroup { display: grid; gap: 6px; }
+.fgroup-head { display: flex; justify-content: space-between; align-items: center; background: none; border: 0; padding: 0; cursor: pointer; text-align: left; color: var(--cat); font-weight: 700; font-size: .78rem; letter-spacing: .08em; text-transform: uppercase; }
+.fgroup-head span:last-child { color: var(--muted); letter-spacing: 0; font-weight: 500; text-transform: none; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { border: 1px solid var(--line); background: var(--raised); border-radius: 999px; padding: 3px 11px; font-size: .88rem; cursor: pointer; color: var(--muted); }
+.chip[aria-pressed="true"] { border-color: var(--cat); color: var(--ink); background: color-mix(in srgb, var(--cat) 14%, var(--raised)); }
+.chip[aria-pressed="true"]::before { content: "✓ "; color: var(--cat); font-weight: 700; }
+.frow { display: flex; gap: 8px; flex-wrap: wrap; }
+
+.btn { display: inline-flex; align-items: center; gap: 6px; border-radius: 8px; padding: 8px 16px; border: 1px solid var(--line); background: var(--raised); cursor: pointer; font-weight: 500; text-decoration: none; color: var(--ink); }
+.btn:hover { border-color: var(--muted); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 700; }
+.btn.primary:hover { filter: brightness(1.08); }
+.btn.small { padding: 4px 10px; font-size: .88rem; }
+.btn.danger { color: var(--low); }
+.btn:disabled { opacity: .55; cursor: not-allowed; }
+.linkish { background: none; border: 0; padding: 0; color: var(--accent); cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+
+.notice { border: 1px solid var(--line); background: var(--accent-soft); border-radius: var(--r); padding: 12px 16px; font-size: .95rem; }
+.notice.error { background: color-mix(in srgb, var(--low) 12%, var(--surface)); border-color: color-mix(in srgb, var(--low) 40%, var(--line)); }
+.content { display: grid; gap: 22px; min-width: 0; }
+.intro { display: grid; gap: 8px; }
+.intro h2 { font-size: 1.9rem; }
+.intro p { margin: 0; color: var(--muted); max-width: 62ch; }
+.toolbar { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.toolbar input[type=search], .toolbar select { border: 1px solid var(--line); background: var(--raised); border-radius: 8px; padding: 7px 12px; }
+.toolbar input[type=search] { flex: 1 1 200px; min-width: 0; }
+.toolbar .stat { color: var(--muted); font-size: .92rem; }
+
+/* Score medallion: the ring fills to the score out of 10 */
+.medal { --tone: var(--muted); --size: 72px; width: var(--size); height: var(--size); flex: none; border-radius: 50%; position: relative; display: grid; place-items: center;
+  background: conic-gradient(var(--tone) calc(var(--p) * 1%), var(--line) 0); }
+.medal::before { content: ""; position: absolute; inset: 5px; border-radius: 50%; background: var(--raised); }
+.medal > span { position: relative; display: flex; align-items: baseline; gap: 1px; font-variant-numeric: tabular-nums lining-nums; }
+.medal b { font-family: var(--font-display); font-size: calc(var(--size) * .34); color: var(--tone); line-height: 1; }
+.medal small { font-size: calc(var(--size) * .15); color: var(--muted); }
+.medal.lg { --size: 116px; }
+.medal.sm { --size: 52px; }
+.medal.sm::before { inset: 4px; }
+.good { --tone: var(--good); } .mid { --tone: var(--mid); } .low { --tone: var(--low); }
+
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 16px; display: grid; gap: 12px; cursor: pointer; text-align: left; color: inherit; width: 100%; }
+.card:hover { border-color: var(--accent); }
+.card-head { display: flex; gap: 14px; align-items: center; }
+.card-head > div { min-width: 0; }
+.card h3 { font-size: 1.2rem; overflow-wrap: anywhere; }
+.by { color: var(--muted); font-size: .9rem; }
+.desc { margin: 0; color: var(--ink); font-size: .95rem; overflow-wrap: anywhere; }
+.catbars { display: grid; gap: 5px; }
+.catbar { display: grid; grid-template-columns: 92px minmax(0, 1fr) 34px; gap: 8px; align-items: center; font-size: .82rem; }
+.catbar .lab { color: var(--cat); font-weight: 700; letter-spacing: .03em; }
+.track { height: 7px; border-radius: 4px; background: var(--line); overflow: hidden; }
+.fill { height: 100%; background: var(--cat); border-radius: 4px; }
+.catbar .v { text-align: right; color: var(--muted); }
+.catbar.off { opacity: .4; }
+.foot { display: flex; justify-content: space-between; color: var(--muted); font-size: .85rem; border-top: 1px solid var(--line); padding-top: 10px; }
+
+.empty { border: 1px dashed var(--line); border-radius: var(--r); padding: 32px 20px; display: grid; gap: 12px; justify-items: start; background: var(--surface); }
+.empty h3 { font-size: 1.25rem; }
+.empty p { margin: 0; color: var(--muted); max-width: 56ch; }
+
+/* Mod page */
+.back { font-size: .95rem; }
+.modhead { display: flex; gap: 22px; align-items: center; flex-wrap: wrap; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 20px; }
+.modhead > div { flex: 1 1 260px; min-width: 0; display: grid; gap: 6px; }
+.modhead h2 { font-size: 2rem; overflow-wrap: anywhere; }
+.modhead .meta { color: var(--muted); font-size: .92rem; }
+.actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.section-title { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.section-title h3 { font-size: 1.3rem; }
+.section-title span { color: var(--muted); font-size: .9rem; }
+.breakdown { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; }
+.catblock { border: 1px solid var(--line); border-top: 3px solid var(--cat); border-radius: var(--r); background: var(--surface); padding: 14px 16px; display: grid; gap: 8px; align-content: start; }
+.catblock-head { display: flex; justify-content: space-between; align-items: baseline; }
+.catblock-head h4 { margin: 0; font-family: var(--font-display); font-size: 1.1rem; color: var(--cat); }
+.catblock-head b { font-size: 1.1rem; }
+.mrow { display: grid; grid-template-columns: minmax(0, 1fr) 90px 36px; gap: 10px; align-items: center; font-size: .92rem; }
+.mrow .n { color: var(--muted); font-size: .78rem; }
+.mrow .v { text-align: right; font-weight: 700; }
+.mrow.off { opacity: .38; }
+.mrow.off .v { font-weight: 400; }
+
+.reviews { display: grid; gap: 12px; }
+.review { border: 1px solid var(--line); border-radius: var(--r); background: var(--surface); padding: 14px 16px; display: grid; gap: 10px; }
+.review.mine { border-color: var(--accent); }
+.review-head { display: flex; gap: 14px; align-items: center; }
+.review-head > div { flex: 1; min-width: 0; }
+.review-head strong { font-size: 1.05rem; overflow-wrap: anywhere; }
+.tag { font-size: .72rem; letter-spacing: .06em; text-transform: uppercase; font-weight: 700; color: var(--accent); margin-left: 6px; }
+.review p.notes { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; max-width: 70ch; }
+.review details summary { cursor: pointer; color: var(--accent); font-size: .92rem; }
+.scoregrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 4px 18px; margin-top: 8px; font-size: .9rem; }
+.scoregrid div { display: flex; justify-content: space-between; gap: 8px; border-bottom: 1px dotted var(--line); padding-block: 2px; }
+.scoregrid div span:first-child { color: var(--cat); }
+.scoregrid div.off { opacity: .4; }
+
+/* Forms */
+.form { display: grid; gap: 18px; }
+.form h2 { font-size: 1.7rem; }
+.field { display: grid; gap: 4px; }
+.field label { font-weight: 700; }
+.field .hint { color: var(--muted); font-size: .88rem; }
+.field input, .field textarea { border: 1px solid var(--line); background: var(--raised); border-radius: 8px; padding: 9px 12px; width: 100%; }
+.field textarea { min-height: 110px; resize: vertical; }
+.two { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 14px; }
+@media (max-width: 520px) { .two { grid-template-columns: minmax(0, 1fr); } }
+fieldset.cat { border: 1px solid var(--line); border-top: 3px solid var(--cat); border-radius: var(--r); background: var(--surface); padding: 6px 16px 14px; margin: 0; display: grid; gap: 4px; min-width: 0; }
+fieldset.cat legend { font-family: var(--font-display); font-weight: 700; font-size: 1.2rem; color: var(--cat); padding: 0 6px; margin-left: -6px; }
+.metric-in { display: grid; gap: 4px; padding-block: 10px; border-bottom: 1px solid var(--line); }
+.metric-in:last-child { border-bottom: 0; }
+.metric-in label { font-weight: 700; }
+.metric-in p { margin: 0; color: var(--muted); font-size: .9rem; max-width: 70ch; }
+.slider { display: grid; grid-template-columns: minmax(0, 1fr) 54px auto; gap: 12px; align-items: center; }
+.slider input[type=range] { width: 100%; accent-color: var(--cat); }
+.slider input.unset { opacity: .35; }
+.slider output { font-family: var(--font-display); font-size: 1.35rem; font-weight: 700; text-align: right; font-variant-numeric: tabular-nums lining-nums; }
+.slider output.unset { color: var(--muted); font-weight: 500; }
+.ticks { display: flex; justify-content: space-between; font-size: .72rem; color: var(--muted); margin-right: calc(54px + 12px + 56px); padding-inline: 2px; }
+.scale-note { color: var(--muted); font-size: .92rem; margin: 0; max-width: 70ch; }
+.submitbar { position: sticky; bottom: 0; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 12px 16px; display: flex; gap: 14px; align-items: center; flex-wrap: wrap;
+  margin-bottom: env(safe-area-inset-bottom, 0px); box-shadow: 0 -6px 18px -12px rgba(0,0,0,.35); }
+.submitbar .pv { flex: 1 1 180px; display: flex; gap: 12px; align-items: center; min-width: 0; }
+.submitbar .pv div { font-size: .9rem; color: var(--muted); }
+.submitbar .pv strong { color: var(--ink); display: block; }
+.err { color: var(--low); font-size: .92rem; margin: 0; }
+.confirm { display: inline-flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: .92rem; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .card, .btn, .chip { transition: border-color .15s, background-color .15s, filter .15s; }
+  .fill { transition: width .3s ease; }
+}
+</style>
+
+<header class="top">
+  <div class="top-in">
+    <a class="brand" href="#"><h1>STS2 Character Mod Reviews</h1><span class="asc">Ascension 10</span></a>
+    <span class="spacer"></span>
+    <span id="who" class="by"></span>
+  </div>
+</header>
+<main class="wrap">
+  <details class="filters" id="filters" open></details>
+  <section class="content" id="view" aria-live="polite"></section>
+</main>
+
+<script>
+const CATS = [
+  { key: "aes", name: "Aesthetics", short: "Aesthetics", metrics: [
+    ["art", "Art", "How strong is the visual design of the character and other assets?"],
+    ["aes_consistency", "Consistency", "Does the art style fit appropriately with the base game’s art style?"],
+    ["immersion", "Immersion", "Does the mod have animations, sound effects, and other features to increase immersion?"],
+  ]},
+  { key: "mech", name: "Mechanics", short: "Mechanics", metrics: [
+    ["uniqueness", "Uniqueness", "How much do the new mechanics provide in terms of new ways to enjoy deck building?"],
+    ["compatibility", "Compatibility", "Do the new mechanics make certain elements of Spire’s challenge particularly trivial, or particularly difficult?"],
+    ["mech_consistency", "Consistency", "Do mechanics behave as you would reasonably expect? Are mechanics described in the most clear and simple ways?"],
+    ["completeness", "Completeness", "Does the character have a full card pool, ancient dialogue + cards, relics and potions?"],
+    ["complexity", "Complexity", "Does the character sit somewhere inside or slightly above the complexity level of the base characters? Does this character’s difficulty come more from complexity of mechanics rather than the design?"],
+    ["playability", "Playability", "Are the new mechanics implemented in a smooth and natural way?"],
+  ]},
+  { key: "bal", name: "A10 Balance", short: "A10 Balance", metrics: [
+    ["difficulty", "Difficulty", "Does this character’s difficulty line up well with the base game characters?"],
+    ["adaptability", "Adaptability", "Can this character recover runs in weaker positions, or do strong rewards feel necessary to have a good chance to win? Does this character rely on finding cards building into a specific archetype, or do they have a strong decision space where many different approaches can win?"],
+    ["snowballing", "Snowballing", "Does this character have a lot of cards or card combos which solve a majority of the game’s challenges? Do your wins and losses feel inevitable well before the end of the run?"],
+    ["outliers", "Outliers", "Does this character have cards which seem obviously much weaker or stronger than others at the same rarity? AKA: cards you always pick/skip regardless of scenario."],
+  ]},
+  { key: "ref", name: "Reflection", short: "Reflection", metrics: [
+    ["enjoyment", "Enjoyment", "Do you find yourself coming back to this character regularly?"],
+    ["fulfilment", "Fulfilment", "How many of your runs feel satisfying? When you lose, do you feel like you have ideas of where you made mistakes? When you win, do you feel like it is usually because you made good decisions, or found strong rewards?"],
+  ]},
+];
+const METRICS = CATS.flatMap(c => c.metrics.map(([id, label, q]) => ({ id, label, q, cat: c.key })));
+const METRIC_IDS = METRICS.map(m => m.id);
+const catOf = k => CATS.find(c => c.key === k);
+
+const store = {
+  get(k, d) { try { const v = localStorage.getItem("sts2r:" + k); return v == null ? d : JSON.parse(v); } catch { return d; } },
+  set(k, v) { try { localStorage.setItem("sts2r:" + k, JSON.stringify(v)); } catch {} },
+};
+
+let enabled = new Set((store.get("enabled", METRIC_IDS) || METRIC_IDS).filter(id => METRIC_IDS.includes(id)));
+const S = {
+  db: null, user: null, uid: null, canWrite: null, canEdit: false,
+  status: "connecting", // connecting | ready | offline
+  mods: new Map(), reviews: [], loaded: { mods: false, reviews: false },
+  refused: false, sort: store.get("sort", "score"), q: "",
+};
+
+/* ---------- helpers ---------- */
+function h(tag, props, ...kids) {
+  const el = document.createElement(tag);
+  if (props) for (const [k, v] of Object.entries(props)) {
+    if (v == null || v === false) continue;
+    if (k === "class") el.className = v;
+    else if (k === "text") el.textContent = v;
+    else if (k === "style") el.style.cssText = v;
+    else if (k.startsWith("on")) el.addEventListener(k.slice(2), v);
+    else el.setAttribute(k, v === true ? "" : v);
+  }
+  for (const c of kids.flat(Infinity)) {
+    if (c == null || c === false) continue;
+    el.append(c.nodeType ? c : document.createTextNode(String(c)));
+  }
+  return el;
+}
+const isScore = v => typeof v === "number" && v >= 0 && v <= 10 && Math.round(v * 2) === v * 2;
+const mean = a => a.length ? a.reduce((x, y) => x + y, 0) / a.length : null;
+const fmt = v => v == null ? "—" : (Math.round(v * 10) / 10).toFixed(1);
+const tone = v => v == null ? "" : v >= 7.5 ? "good" : v >= 5 ? "mid" : "low";
+const enabledIds = () => METRIC_IDS.filter(id => enabled.has(id));
+const str = (v, n) => typeof v === "string" ? v.slice(0, n) : "";
+const fmtDate = t => typeof t === "number" ? new Date(t).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : "";
+
+function safeWorkshop(u) {
+  try { const x = new URL(u); if (x.protocol === "https:" && /(^|\.)steamcommunity\.com$/i.test(x.hostname)) return x.href; } catch {}
+  return null;
+}
+function cleanMod(id, d) {
+  if (!d) return null;
+  return { id, name: str(d.name, 80) || "Untitled mod", author: str(d.author, 60), url: safeWorkshop(d.url), desc: str(d.desc, 400), addedBy: str(d.addedBy, 200), createdAt: d.createdAt };
+}
+function cleanReview(id, d) {
+  if (!d || typeof d.modId !== "string") return null;
+  const scores = {};
+  if (d.scores && typeof d.scores === "object") for (const k of METRIC_IDS) if (isScore(d.scores[k])) scores[k] = d.scores[k];
+  return { id, modId: d.modId, uid: str(d.uid, 200), handle: str(d.handle, 40) || "Anonymous", runs: Number.isFinite(d.runs) ? d.runs : null,
+    notes: str(d.notes, 2000), scores, createdAt: d.createdAt, updatedAt: d.updatedAt };
+}
+
+const reviewsFor = modId => S.reviews.filter(r => r.modId === modId);
+const myReview = modId => S.uid ? S.reviews.find(r => r.modId === modId && r.uid === S.uid) : null;
+const reviewTotal = r => mean(enabledIds().map(id => r.scores[id]).filter(isScore));
+function combined(modId) {
+  const rs = reviewsFor(modId), per = {};
+  for (const id of METRIC_IDS) { const vals = rs.map(r => r.scores[id]).filter(isScore); per[id] = { avg: mean(vals), n: vals.length }; }
+  return { per, count: rs.length };
+}
+const combinedTotal = per => mean(enabledIds().map(id => per[id].avg).filter(v => v != null));
+function catAvg(per, catKey) {
+  const ids = catOf(catKey).metrics.map(m => m[0]).filter(id => enabled.has(id));
+  if (!ids.length) return { off: true, v: null };
+  return { off: false, v: mean(ids.map(id => per[id].avg).filter(v => v != null)) };
+}
+const canPost = () => !!(S.db && S.uid && S.canWrite !== false && !S.refused);
+const reviewDocId = modId => `${modId}--${S.uid.replace(/[^A-Za-z0-9_.~:@+-]/g, "_")}`;
+
+function medal(v, size = "") {
+  return h("div", { class: `medal ${size} ${tone(v)}`, style: `--p:${v == null ? 0 : v * 10}`, role: "img", "aria-label": v == null ? "No score yet" : `${fmt(v)} out of 10` },
+    h("span", null, h("b", null, fmt(v)), h("small", null, "/10")));
+}
+function writeError(e) {
+  const code = e && e.code;
+  if (code === "invalid_argument") { S.refused = true; return "Your access to this page doesn’t allow posting. Ask the page owner to share it with you as a Contributor."; }
+  if (code === "quota_exceeded") return "The review store is full. The page owner needs to remove old entries before new ones can be added.";
+  if (code === "resource_exhausted") return "Too many saves in a short time. Wait a few seconds and try again.";
+  return "That didn’t save because the connection dropped. Check your connection and try again.";
+}
+
+/* ---------- metric switchboard ---------- */
+function setEnabled(next) { enabled = next; store.set("enabled", [...enabled]); renderFilters(); refresh(); }
+function renderFilters() {
+  const root = document.getElementById("filters");
+  const wasOpen = root.open;
+  root.replaceChildren(
+    h("summary", null, h("h2", null, "Metrics counted"), h("span", { class: "count num" }, `${enabled.size} of ${METRICS.length} on`)),
+    h("div", { class: "filters-body" },
+      h("p", null, "Every total is the average of the metrics switched on here. Your choice is remembered on this device."),
+      CATS.map(c => {
+        const ids = c.metrics.map(m => m[0]);
+        const on = ids.filter(id => enabled.has(id)).length;
+        return h("div", { class: "fgroup", style: `--cat: var(--c-${c.key})` },
+          h("button", { type: "button", class: "fgroup-head", title: on === ids.length ? `Switch off all ${c.name} metrics` : `Switch on all ${c.name} metrics`,
+            onclick: () => { const n = new Set(enabled); ids.forEach(id => on === ids.length ? n.delete(id) : n.add(id)); setEnabled(n); } },
+            h("span", null, c.name), h("span", { class: "num" }, `${on}/${ids.length}`)),
+          h("div", { class: "chips" }, c.metrics.map(([id, label, q]) =>
+            h("button", { type: "button", class: "chip", "aria-pressed": String(enabled.has(id)), title: q,
+              onclick: () => { const n = new Set(enabled); n.has(id) ? n.delete(id) : n.add(id); setEnabled(n); } }, label))));
+      }),
+      h("div", { class: "frow" },
+        h("button", { type: "button", class: "btn small", onclick: () => setEnabled(new Set(METRIC_IDS)) }, "All on"),
+        h("button", { type: "button", class: "btn small", onclick: () => setEnabled(new Set(CATS.find(c => c.key === "bal").metrics.map(m => m[0]))) }, "A10 Balance only"))
+    ));
+  root.open = wasOpen;
+}
+
+/* ---------- routing ---------- */
+function route() {
+  const hsh = location.hash.slice(1);
+  if (hsh === "add") return { name: "add" };
+  if (hsh.startsWith("mod-")) return { name: "mod", id: hsh.slice(4) };
+  if (hsh.startsWith("review-")) return { name: "review", id: hsh.slice(7) };
+  return { name: "list" };
+}
+let currentRoute = route();
+window.addEventListener("hashchange", () => { currentRoute = route(); render(); window.scrollTo(0, 0); });
+const go = hash => { location.hash = hash; };
+
+// Forms are built once and kept while typing; list and mod pages redraw on every change.
+function refresh() {
+  if (currentRoute.name === "list" || currentRoute.name === "mod") render();
+  else if (typeof updatePreview === "function") updatePreview();
+}
+let updatePreview = null;
+
+function render() {
+  const active = document.activeElement && document.activeElement.id;
+  const sel = active === "q" ? [document.activeElement.selectionStart, document.activeElement.selectionEnd] : null;
+  updatePreview = null;
+  const view = document.getElementById("view");
+  const r = currentRoute;
+  let nodes;
+  if (S.status === "offline") nodes = [offlineView()];
+  else if (r.name === "add") nodes = addModView();
+  else if (r.name === "review") nodes = reviewView(r.id);
+  else if (r.name === "mod") nodes = modView(r.id);
+  else nodes = listView();
+  view.replaceChildren(...[].concat(nodes));
+  if (active) { const el = document.getElementById(active); if (el) { el.focus(); if (sel) el.setSelectionRange(...sel); } }
+}
+
+function offlineView() {
+  return h("div", { class: "empty" },
+    h("h3", null, "Sign in to read and post reviews"),
+    h("p", null, "Reviews are stored with this page on claude.ai. Open it while signed in to see every mod, the community scores and your own reviews."));
+}
+function loadingView() { return h("div", { class: "empty" }, h("h3", null, "Loading reviews…"), h("p", null, "Fetching the mod list and every logged review.")); }
+function readOnlyNote() {
+  if (S.status !== "ready" || canPost()) return null;
+  return h("div", { class: "notice" }, S.uid
+    ? "You can browse every review. To add mods or post your own review, ask the page owner to share it with you as a Contributor."
+    : "You can browse every review. Posting needs a signed-in claude.ai account with Contributor access to this page.");
+}
+
+/* ---------- list ---------- */
+function listView() {
+  const intro = h("div", { class: "intro" },
+    h("h2", null, "Character mods, scored at A10"),
+    h("p", null, "Community reviews of Slay the Spire 2 character mods from the Steam Workshop, written for players who want balanced, interesting characters at Ascension 10. Switch metrics on or off to rebuild every total around what you care about."));
+  if (S.status === "connecting" || !S.loaded.mods || !S.loaded.reviews) return [intro, loadingView()];
+
+  const mods = [...S.mods.values()].map(m => { const c = combined(m.id); return { m, c, total: combinedTotal(c.per) }; });
+  const q = S.q.trim().toLowerCase();
+  const shown = mods.filter(x => !q || x.m.name.toLowerCase().includes(q) || x.m.author.toLowerCase().includes(q));
+  const sorters = {
+    score: (a, b) => (b.total ?? -1) - (a.total ?? -1) || b.c.count - a.c.count,
+    reviews: (a, b) => b.c.count - a.c.count || (b.total ?? -1) - (a.total ?? -1),
+    newest: (a, b) => (b.m.createdAt || 0) - (a.m.createdAt || 0),
+    name: (a, b) => a.m.name.localeCompare(b.m.name),
+  };
+  shown.sort(sorters[S.sort] || sorters.score);
+
+  const toolbar = h("div", { class: "toolbar" },
+    h("input", { type: "search", id: "q", placeholder: "Search by mod or author", "aria-label": "Search mods", value: S.q,
+      oninput: e => { S.q = e.target.value; render(); } }),
+    h("select", { id: "sort", "aria-label": "Sort mods", onchange: e => { S.sort = e.target.value; store.set("sort", S.sort); render(); } },
+      [["score", "Highest score"], ["reviews", "Most reviewed"], ["newest", "Newest added"], ["name", "Name A–Z"]]
+        .map(([v, t]) => h("option", { value: v, selected: S.sort === v }, t))),
+    canPost() ? h("button", { type: "button", class: "btn primary", onclick: () => go("add") }, "Add a mod") : null);
+
+  const statLine = h("div", { class: "toolbar" }, h("span", { class: "stat num" }, `${S.mods.size} ${S.mods.size === 1 ? "mod" : "mods"} · ${S.reviews.length} ${S.reviews.length === 1 ? "review" : "reviews"} logged`));
+
+  let body;
+  if (!S.mods.size) {
+    body = h("div", { class: "empty" },
+      h("h3", null, "No character mods yet"),
+      h("p", null, "Add a character mod from the Steam Workshop to start collecting A10 reviews. Each mod gets a combined score built from every review posted for it."),
+      canPost() ? h("button", { type: "button", class: "btn primary", onclick: () => go("add") }, "Add the first mod") : null);
+  } else if (!shown.length) {
+    body = h("div", { class: "empty" }, h("h3", null, "No mods match that search"), h("p", null, "Try a shorter name, or clear the search box to see every mod."));
+  } else {
+    body = h("div", { class: "grid" }, shown.map(({ m, c, total }) =>
+      h("button", { type: "button", class: "card", onclick: () => go("mod-" + m.id) },
+        h("div", { class: "card-head" }, medal(total),
+          h("div", null, h("h3", null, m.name), m.author ? h("div", { class: "by" }, "by ", m.author) : null)),
+        m.desc ? h("p", { class: "desc" }, m.desc.length > 140 ? m.desc.slice(0, 140) + "…" : m.desc) : null,
+        h("div", { class: "catbars" }, CATS.map(cat => {
+          const a = catAvg(c.per, cat.key);
+          return h("div", { class: "catbar" + (a.off ? " off" : ""), style: `--cat: var(--c-${cat.key})` },
+            h("span", { class: "lab" }, cat.short),
+            h("span", { class: "track" }, h("span", { class: "fill", style: `display:block;width:${a.v == null ? 0 : a.v * 10}%` })),
+            h("span", { class: "v num" }, a.off ? "off" : fmt(a.v)));
+        })),
+        h("div", { class: "foot" }, h("span", { class: "num" }, c.count ? `${c.count} ${c.count === 1 ? "review" : "reviews"}` : "No reviews yet"),
+          myReview(m.id) ? h("span", null, "You reviewed this") : null))));
+  }
+  return [intro, readOnlyNote(), toolbar, statLine, body];
+}
+
+/* ---------- mod page ---------- */
+function modView(id) {
+  const back = h("a", { class: "back", href: "#" }, "← All mods");
+  if (S.status === "connecting" || !S.loaded.mods || !S.loaded.reviews) return [back, loadingView()];
+  const m = S.mods.get(id);
+  if (!m) return [back, h("div", { class: "empty" }, h("h3", null, "This mod isn’t in the list"), h("p", null, "It may have been removed. Go back to all mods to pick another."))];
+
+  const c = combined(m.id), total = combinedTotal(c.per), mine = myReview(m.id);
+  const scoredMetricsOn = enabledIds().filter(i => c.per[i].avg != null).length;
+
+  const delMod = h("span", { class: "confirm" });
+  const showDelMod = () => delMod.replaceChildren(
+    h("span", null, `Remove ${m.name} and its ${c.count} ${c.count === 1 ? "review" : "reviews"}?`),
+    h("button", { type: "button", class: "btn small danger", onclick: async e => {
+      e.target.disabled = true;
+      try { for (const r of reviewsFor(m.id)) await S.db.doc("reviews/" + r.id).delete(); await S.db.doc("mods/" + m.id).delete(); go(""); }
+      catch (err) { delMod.replaceChildren(h("span", { class: "err" }, writeError(err))); }
+    } }, "Remove"),
+    h("button", { type: "button", class: "btn small", onclick: () => delMod.replaceChildren(delModBtn) }, "Keep"));
+  const delModBtn = h("button", { type: "button", class: "linkish", onclick: showDelMod }, "Remove mod");
+  delMod.append(delModBtn);
+
+  const head = h("div", { class: "modhead" }, medal(total, "lg"),
+    h("div", null,
+      h("h2", null, m.name),
+      h("div", { class: "meta num" }, [m.author ? `by ${m.author}` : null, c.count ? `${c.count} ${c.count === 1 ? "review" : "reviews"}` : "No reviews yet",
+        `${scoredMetricsOn} of ${METRICS.length} metrics counted`].filter(Boolean).join(" · ")),
+      m.desc ? h("p", { class: "desc" }, m.desc) : null,
+      h("div", { class: "actions" },
+        canPost() ? h("button", { type: "button", class: "btn primary", onclick: () => go("review-" + m.id) }, mine ? "Edit your review" : "Write a review") : null,
+        m.url ? h("a", { class: "btn", href: m.url, target: "_blank", rel: "noopener noreferrer" }, "Steam Workshop page ↗") : null,
+        S.canEdit ? delMod : null)));
+
+  const breakdown = h("div", { class: "breakdown" }, CATS.map(cat => {
+    const a = catAvg(c.per, cat.key);
+    return h("div", { class: "catblock", style: `--cat: var(--c-${cat.key})` },
+      h("div", { class: "catblock-head" }, h("h4", null, cat.name), h("b", { class: "num" }, a.off ? "off" : fmt(a.v))),
+      cat.metrics.map(([mid, label, q]) => {
+        const p = c.per[mid], on = enabled.has(mid);
+        return h("div", { class: "mrow" + (on ? "" : " off"), title: q },
+          h("span", null, label, " ", h("span", { class: "n num" }, p.n ? `(${p.n})` : "")),
+          h("span", { class: "track" }, h("span", { class: "fill", style: `display:block;width:${p.avg == null ? 0 : p.avg * 10}%` })),
+          h("span", { class: "v num" }, fmt(p.avg)));
+      }));
+  }));
+
+  const rs = reviewsFor(m.id).sort((a, b) => (a.uid === S.uid ? -1 : b.uid === S.uid ? 1 : 0) || (b.updatedAt || 0) - (a.updatedAt || 0));
+  const list = rs.length ? h("div", { class: "reviews" }, rs.map(reviewCard)) :
+    h("div", { class: "empty" }, h("h3", null, "No reviews yet"), h("p", null, "Once players post reviews, the combined score above is built from the average of each metric across all of them."),
+      canPost() ? h("button", { type: "button", class: "btn primary", onclick: () => go("review-" + m.id) }, "Write the first review") : null);
+
+  return [back, readOnlyNote(), head,
+    h("div", { class: "section-title" }, h("h3", null, "Combined review"), h("span", null, "Average of every review, per metric. Numbers in brackets are how many reviewers scored it.")),
+    breakdown,
+    h("div", { class: "section-title" }, h("h3", null, "Individual reviews"), h("span", { class: "num" }, `${rs.length} logged`)),
+    list];
+}
+
+function reviewCard(r) {
+  const mine = r.uid && r.uid === S.uid;
+  const t = reviewTotal(r);
+  const n = enabledIds().filter(id => isScore(r.scores[id])).length;
+  const confirm = h("span", { class: "confirm" });
+  if (mine && canPost()) {
+    const btns = () => confirm.replaceChildren(
+      h("button", { type: "button", class: "btn small", onclick: () => go("review-" + r.modId) }, "Edit"),
+      h("button", { type: "button", class: "btn small danger", onclick: () => confirm.replaceChildren(
+        h("span", null, "Delete your review?"),
+        h("button", { type: "button", class: "btn small danger", onclick: async e => {
+          e.target.disabled = true;
+          try { await S.db.doc("reviews/" + r.id).delete(); } catch (err) { confirm.replaceChildren(h("span", { class: "err" }, writeError(err))); }
+        } }, "Delete"),
+        h("button", { type: "button", class: "btn small", onclick: btns }, "Keep")) }, "Delete"));
+    btns();
+  }
+  return h("article", { class: "review" + (mine ? " mine" : "") },
+    h("div", { class: "review-head" }, medal(t, "sm"),
+      h("div", null,
+        h("strong", null, r.handle), mine ? h("span", { class: "tag" }, "You") : null,
+        h("div", { class: "by num" }, [r.runs != null ? `${r.runs} A10 ${r.runs === 1 ? "run" : "runs"}` : null, `${n} metrics counted`, fmtDate(r.updatedAt || r.createdAt)].filter(Boolean).join(" · "))),
+      mine && canPost() ? confirm : null),
+    r.notes ? h("p", { class: "notes" }, r.notes) : null,
+    h("details", null, h("summary", null, "All scores"),
+      h("div", { class: "scoregrid" }, METRICS.map(mt =>
+        h("div", { class: enabled.has(mt.id) ? "" : "off", style: `--cat: var(--c-${mt.cat})`, title: catOf(mt.cat).name },
+          h("span", null, mt.label, mt.label === "Consistency" ? ` (${mt.cat === "aes" ? "art" : "mech"})` : ""), h("span", { class: "num" }, fmt(r.scores[mt.id] ?? null)))))));
+}
+
+/* ---------- review form ---------- */
+function reviewView(modId) {
+  const back = h("a", { class: "back", href: "#mod-" + modId }, "← Back to mod");
+  if (S.status === "connecting" || !S.loaded.mods || !S.loaded.reviews) return [back, loadingView()];
+  const m = S.mods.get(modId);
+  if (!m) return [back, h("div", { class: "empty" }, h("h3", null, "This mod isn’t in the list"), h("p", null, "It may have been removed."))];
+  if (!canPost()) return [back, readOnlyNote()];
+
+  const existing = myReview(modId);
+  const scores = { ...(existing ? existing.scores : {}) };
+  const errEl = h("p", { class: "err", role: "alert" });
+
+  const fieldsets = CATS.map(cat => h("fieldset", { class: "cat", style: `--cat: var(--c-${cat.key})` },
+    h("legend", null, cat.name),
+    cat.metrics.map(([id, label, q]) => {
+      const set = isScore(scores[id]);
+      const out = h("output", { for: "s-" + id, class: set ? "" : "unset" }, set ? fmt(scores[id]) : "—");
+      const range = h("input", { type: "range", id: "s-" + id, min: "0", max: "10", step: "0.5", value: String(set ? scores[id] : 5), class: set ? "" : "unset",
+        "aria-describedby": "d-" + id, "aria-valuetext": set ? `${fmt(scores[id])} out of 10` : "Not scored" });
+      const mark = () => { const v = Number(range.value); scores[id] = v; range.classList.remove("unset"); out.classList.remove("unset"); out.textContent = fmt(v); range.setAttribute("aria-valuetext", `${fmt(v)} out of 10`); updatePreview(); };
+      range.addEventListener("input", mark);
+      range.addEventListener("pointerdown", () => { if (range.classList.contains("unset")) setTimeout(mark, 0); });
+      const clear = h("button", { type: "button", class: "btn small", onclick: () => { delete scores[id]; range.value = "5"; range.classList.add("unset"); out.classList.add("unset"); out.textContent = "—"; range.setAttribute("aria-valuetext", "Not scored"); updatePreview(); } }, "Clear");
+      return h("div", { class: "metric-in" },
+        h("label", { for: "s-" + id }, label),
+        h("p", { id: "d-" + id }, q),
+        h("div", { class: "slider" }, range, out, clear),
+        h("div", { class: "ticks num", "aria-hidden": "true" }, ["0", "2.5", "5", "7.5", "10"].map(t => h("span", null, t))));
+    })));
+
+  const pvMedal = h("div");
+  const pvText = h("div");
+  updatePreview = () => {
+    const t = mean(enabledIds().map(i => scores[i]).filter(isScore));
+    const n = METRIC_IDS.filter(i => isScore(scores[i])).length;
+    pvMedal.replaceChildren(medal(t, "sm"));
+    pvText.replaceChildren(h("strong", null, "Your total"), `${n} of ${METRICS.length} metrics scored · ${enabledIds().filter(i => isScore(scores[i])).length} counted`);
+  };
+  updatePreview();
+
+  const submit = h("button", { type: "submit", class: "btn primary" }, existing ? "Save changes" : "Post review");
+  const form = h("form", { class: "form", id: "review-form", novalidate: true, onsubmit: async e => {
+    e.preventDefault();
+    errEl.textContent = "";
+    const handle = document.getElementById("f-handle").value.trim().slice(0, 40);
+    const runsRaw = document.getElementById("f-runs").value.trim();
+    const runs = runsRaw === "" ? null : Math.max(0, Math.min(9999, Math.floor(Number(runsRaw))));
+    const notes = document.getElementById("f-notes").value.trim().slice(0, 2000);
+    const clean = {}; for (const k of METRIC_IDS) if (isScore(scores[k])) clean[k] = scores[k];
+    if (!handle) { errEl.textContent = "Add the name you want shown on your review."; document.getElementById("f-handle").focus(); return; }
+    if (!Object.keys(clean).length) { errEl.textContent = "Score at least one metric before posting."; return; }
+    if (runsRaw !== "" && !Number.isFinite(runs)) { errEl.textContent = "A10 runs played should be a whole number."; return; }
+    submit.disabled = true; submit.textContent = "Saving…";
+    try {
+      const now = Date.now();
+      await S.db.doc("reviews/" + (existing ? existing.id : reviewDocId(modId))).set({
+        modId, uid: S.uid, handle, runs, notes, scores: clean, createdAt: existing && existing.createdAt || now, updatedAt: now });
+      store.set("handle", handle);
+      go("mod-" + modId);
+    } catch (err) {
+      errEl.textContent = writeError(err);
+      submit.disabled = false; submit.textContent = existing ? "Save changes" : "Post review";
+    }
+  } },
+    h("h2", null, existing ? "Edit your review of " : "Review ", m.name),
+    h("p", { class: "scale-note" }, "Score each metric from 0 to 10 in steps of 0.5, where 10 is the best a character could do on that metric. For Snowballing and Outliers, a high score means the problem is well controlled. Leave a metric on “—” if you can’t judge it yet; it won’t count toward any average."),
+    h("div", { class: "two" },
+      h("div", { class: "field" }, h("label", { for: "f-handle" }, "Name shown on your review"),
+        h("input", { id: "f-handle", maxlength: "40", autocomplete: "nickname", placeholder: "e.g. your Steam name", value: existing ? existing.handle : store.get("handle", "") })),
+      h("div", { class: "field" }, h("label", { for: "f-runs" }, "A10 runs played"),
+        h("input", { id: "f-runs", type: "number", min: "0", max: "9999", step: "1", inputmode: "numeric", placeholder: "Optional", value: existing && existing.runs != null ? String(existing.runs) : "" }))),
+    fieldsets,
+    h("div", { class: "field" }, h("label", { for: "f-notes" }, "Notes"),
+      h("span", { class: "hint" }, "Optional. Standout cards, archetypes that worked, anything other A10 players should know."),
+      h("textarea", { id: "f-notes", maxlength: "2000" }, existing ? existing.notes : "")),
+    h("div", { class: "submitbar" }, h("div", { class: "pv" }, pvMedal, pvText), errEl,
+      h("a", { class: "btn", href: "#mod-" + modId }, "Cancel"), submit));
+  return [back, form];
+}
+
+/* ---------- add mod ---------- */
+function addModView() {
+  const back = h("a", { class: "back", href: "#" }, "← All mods");
+  if (S.status === "connecting" || !S.loaded.mods) return [back, loadingView()];
+  if (!canPost()) return [back, readOnlyNote()];
+  const errEl = h("p", { class: "err", role: "alert" });
+  const submit = h("button", { type: "submit", class: "btn primary" }, "Add mod");
+  const form = h("form", { class: "form", id: "mod-form", novalidate: true, onsubmit: async e => {
+    e.preventDefault();
+    errEl.textContent = "";
+    const name = document.getElementById("m-name").value.trim().slice(0, 80);
+    const author = document.getElementById("m-author").value.trim().slice(0, 60);
+    const rawUrl = document.getElementById("m-url").value.trim();
+    const desc = document.getElementById("m-desc").value.trim().slice(0, 400);
+    const url = safeWorkshop(rawUrl);
+    if (!name) { errEl.textContent = "Add the character mod’s name."; document.getElementById("m-name").focus(); return; }
+    if (!url) { errEl.textContent = "Paste the mod’s Steam Workshop link. It should start with https://steamcommunity.com/"; document.getElementById("m-url").focus(); return; }
+    const dupe = [...S.mods.values()].find(x => x.url === url || x.name.toLowerCase() === name.toLowerCase());
+    if (dupe) { errEl.textContent = `${dupe.name} is already listed.`; return; }
+    submit.disabled = true; submit.textContent = "Adding…";
+    try {
+      const ref = await S.db.collection("mods").add({ name, author, url, desc, addedBy: S.uid, createdAt: Date.now() });
+      go("mod-" + ref.id);
+    } catch (err) { errEl.textContent = writeError(err); submit.disabled = false; submit.textContent = "Add mod"; }
+  } },
+    h("h2", null, "Add a character mod"),
+    h("div", { class: "two" },
+      h("div", { class: "field" }, h("label", { for: "m-name" }, "Character name"), h("input", { id: "m-name", maxlength: "80", placeholder: "As listed on the Workshop" })),
+      h("div", { class: "field" }, h("label", { for: "m-author" }, "Mod author"), h("input", { id: "m-author", maxlength: "60", placeholder: "Optional" }))),
+    h("div", { class: "field" }, h("label", { for: "m-url" }, "Steam Workshop link"),
+      h("input", { id: "m-url", type: "url", inputmode: "url", placeholder: "https://steamcommunity.com/sharedfiles/filedetails/?id=…" })),
+    h("div", { class: "field" }, h("label", { for: "m-desc" }, "Short description"),
+      h("span", { class: "hint" }, "Optional, up to 400 characters. What the character’s main mechanic is."),
+      h("textarea", { id: "m-desc", maxlength: "400" })),
+    h("div", { class: "actions" }, submit, h("a", { class: "btn", href: "#" }, "Cancel")), errEl);
+  return [back, form];
+}
+
+/* ---------- boot ---------- */
+function onDbError(e) { if (e && (e.code === "revoked" || e.code === "not_granted" || e.code === "capability_disabled")) { S.status = "offline"; render(); } }
+async function boot() {
+  renderFilters();
+  render();
+  const c = window.claude;
+  const [db, user] = c ? await Promise.all([c.use("db"), c.use("user")]) : [null, null];
+  if (!db) { S.status = "offline"; render(); return; }
+  S.db = db; S.user = user;
+  if (user) {
+    const [uid, canWrite, canEdit] = await Promise.all([user.id(), user.can("data.write"), user.canEdit()]);
+    S.uid = uid; S.canWrite = canWrite; S.canEdit = !!canEdit;
+  }
+  S.status = "ready";
+  document.getElementById("who").textContent = canPost() ? "Signed in · you can post reviews" : "Browsing only";
+  db.collection("mods").onSnapshot(s => {
+    S.mods = new Map(s.docs.map(d => [d.id, cleanMod(d.id, d.data())]).filter(([, v]) => v));
+    if (!S.loaded.mods) { S.loaded.mods = true; render(); } else refresh();
+  }, onDbError);
+  db.collection("reviews").onSnapshot(s => {
+    S.reviews = s.docs.map(d => cleanReview(d.id, d.data())).filter(Boolean);
+    if (!S.loaded.reviews) { S.loaded.reviews = true; render(); } else refresh();
+  }, onDbError);
+}
+boot();
+</script>
