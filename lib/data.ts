@@ -55,7 +55,7 @@ export interface ReviewView extends Author {
   updatedAt: string;
 }
 
-/** Verified A10 runs (wins and losses alike; which is never stored). */
+/** Verified A10 runs, counted from run history files (wins and losses alike; which is never stored). */
 export interface RunStats {
   a10Runs: number;
   lastPlayed: string;
@@ -312,7 +312,7 @@ export async function getRunStats(steamId: string, modId: string): Promise<RunSt
 /** Every character a player has verified A10 runs with, and which listed mods add it. */
 export async function getCharacterRuns(steamId: string): Promise<CharacterRuns[]> {
   const [rows, mods] = await Promise.all([
-    db().from("player_character_runs").select("character_id, a10_runs, last_played").eq("steam_id", steamId).order("a10_runs", { ascending: false }),
+    db().from("character_runs").select("character_id, a10_runs, last_played").eq("steam_id", steamId).order("a10_runs", { ascending: false }),
     db().from("mods").select("id, title, character_ids").neq("character_ids", "{}"),
   ]);
   const modRows = check(mods) as { id: string; title: string; character_ids: string[] }[];
@@ -359,38 +359,21 @@ export async function knownCharacterIds(): Promise<string[]> {
   return rows.map((r) => r.character_id);
 }
 
-/** Runs (seed + start time) another account has already verified. A solo run belongs to one player only. */
-export async function runsClaimedByOthers(steamId: string, runs: { seed: string; startTime: number }[]): Promise<Set<string>> {
-  const claimed = new Set<string>();
-  const seeds = [...new Set(runs.map((r) => r.seed))];
-  for (let i = 0; i < seeds.length; i += 150) {
-    const rows = check(
-      await db().from("verified_runs").select("seed, start_time").in("seed", seeds.slice(i, i + 150)).neq("steam_id", steamId),
-    ) as { seed: string; start_time: string }[];
-    for (const r of rows) claimed.add(`${r.seed}:${Math.round(new Date(r.start_time).getTime() / 1000)}`);
-  }
-  return claimed;
-}
-
-export async function insertVerifiedRuns(steamId: string, runs: {
-  characterId: string; seed: string; startTime: number; ascension: number; runTime: number; buildId: string;
-}[]) {
-  for (let i = 0; i < runs.length; i += 500) {
-    check(
-      await db().from("verified_runs").upsert(
-        runs.slice(i, i + 500).map((r) => ({
-          steam_id: steamId,
-          character_id: r.characterId,
-          seed: r.seed,
-          start_time: new Date(r.startTime * 1000).toISOString(),
-          ascension: r.ascension,
-          run_time: r.runTime,
-          build_id: r.buildId,
-        })),
-        { onConflict: "steam_id,seed,start_time", ignoreDuplicates: true },
-      ),
-    );
-  }
+/** Replace a player's A10 run counts for the characters in this scan. Characters not in the scan keep their counts. */
+export async function upsertCharacterRuns(steamId: string, characters: { characterId: string; a10Runs: number; lastPlayed: number }[]) {
+  if (!characters.length) return;
+  check(
+    await db().from("character_runs").upsert(
+      characters.map((c) => ({
+        steam_id: steamId,
+        character_id: c.characterId,
+        a10_runs: c.a10Runs,
+        last_played: new Date(c.lastPlayed * 1000).toISOString(),
+        updated_at: new Date().toISOString(),
+      })),
+      { onConflict: "steam_id,character_id" },
+    ),
+  );
 }
 
 /* ---------- comments ---------- */

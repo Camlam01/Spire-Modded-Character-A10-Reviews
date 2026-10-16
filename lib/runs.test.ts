@@ -52,8 +52,8 @@ test("tallies A10 runs per character and drops duplicate copies", () => {
   const { unique, byCharacter } = tallyRuns([a, b, c, d].flatMap((r) => (r.ok ? [r.run] : [])));
   assert.equal(unique.length, 3);
   assert.deepEqual(byCharacter, [
-    { characterId: "CHARACTER.THETAILOR-THE_TAILOR", a10Runs: 2 },
-    { characterId: "CHARACTER.IRONCLAD", a10Runs: 1 },
+    { characterId: "CHARACTER.THETAILOR-THE_TAILOR", a10Runs: 2, lastPlayed: 1792154405 },
+    { characterId: "CHARACTER.IRONCLAD", a10Runs: 1, lastPlayed: 2 },
   ]);
 });
 

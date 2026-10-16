@@ -12,8 +12,6 @@ export const RATE_LIMITS: Record<RateKind, { max: number; windowMinutes: number;
 
 export const COMMENT_MAX = 2000;
 
-/** Most runs accepted in one upload. */
-export const MAX_RUNS_PER_UPLOAD = 3000;
 
 /** Mod details older than this are re-read from the Workshop. */
 export const WORKSHOP_REFRESH_HOURS = 24;

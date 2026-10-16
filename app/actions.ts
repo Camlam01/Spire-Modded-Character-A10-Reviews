@@ -4,15 +4,14 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { clearSession, getSession, isAdmin } from "@/lib/session";
 import { env } from "@/lib/env";
-import { z } from "zod";
-import { COMMENT_MAX, MAX_RUNS_PER_UPLOAD, RATE_LIMITS } from "@/lib/limits";
-import { characterName, isModdedCharacter, RUN_SUMMARY } from "@/lib/runs";
+import { COMMENT_MAX, RATE_LIMITS } from "@/lib/limits";
+import { CHARACTER_COUNTS, characterName, isModdedCharacter, RUN_SUMMARY } from "@/lib/runs";
 import { autoLinkMods } from "@/lib/linking";
 import { getPlayerSummaries, getSts2Ownership, getWorkshopItem, parseWorkshopId } from "@/lib/steam";
 import {
   deleteComment, deleteMod, deleteReview, findModByWorkshopId, getCharacterRuns, getMod, getPlayer, getReviewMeta, getRunStats,
-  insertComment, insertMod, insertVerifiedRuns, isUuid, linkedCharacterIds, markRunsScanned, runsClaimedByOthers,
-  setModCharacterIds, takeRateToken, toggleVote, updateOwnership, upsertReview,
+  insertComment, insertMod, isUuid, linkedCharacterIds, markRunsScanned, setModCharacterIds, takeRateToken, toggleVote,
+  updateOwnership, upsertCharacterRuns, upsertReview,
 } from "@/lib/data";
 import { cleanMetricNotes, cleanScores } from "@/lib/scoring";
 
@@ -162,45 +161,32 @@ export async function voteAction(_prev: FormState, form: FormData): Promise<Form
 
 /* ---------- verified runs ---------- */
 
-const SCAN = z.object({ runs: z.array(RUN_SUMMARY).max(MAX_RUNS_PER_UPLOAD) });
 const DAY = 86400;
 
-/** Save a player's scanned A10 runs (every character), then link any mods the new characters match. */
+/** Save a player's scanned A10 run counts (one per character), then link any mods the new characters match. */
 export async function scanRunsAction(_prev: FormState, form: FormData): Promise<FormState> {
   const session = await getSession();
   if (!session) return { error: "Your Steam sign-in expired. Sign in again to scan your runs." };
 
   let raw: unknown = null;
   try { raw = JSON.parse(String(form.get("payload") ?? "")); } catch {}
-  const parsed = SCAN.safeParse(raw);
+  const parsed = CHARACTER_COUNTS.safeParse(raw);
   if (!parsed.success) return { error: "Those runs couldn’t be read. Choose your run history folder again." };
   if (!(await takeRateToken(session.steamId, "runs"))) return { error: RATE_LIMITS.runs.message };
 
-  // Checks the browser can't be trusted with. Runs dated before a mod was published are ignored per mod, in the database.
-  const now = Date.now() / 1000;
-  const seen = new Set<string>();
-  let future = 0;
-  const candidates = parsed.data.runs.filter((r) => {
-    const k = `${r.seed}:${r.startTime}`;
-    if (seen.has(k)) return false;
-    seen.add(k);
-    if (r.startTime > now + DAY) { future++; return false; }
-    return true;
-  });
-  const claimed = await runsClaimedByOthers(session.steamId, candidates);
-  const accepted = candidates.filter((r) => !claimed.has(`${r.seed}:${r.startTime}`));
-  if (accepted.length) await insertVerifiedRuns(session.steamId, accepted);
+  const latest = Date.now() / 1000 + DAY;
+  const characters = parsed.data.characters
+    .filter((c, i, all) => all.findIndex((o) => o.characterId === c.characterId) === i)
+    .map((c) => ({ ...c, lastPlayed: Math.min(c.lastPlayed, Math.floor(latest)) }));
+  await upsertCharacterRuns(session.steamId, characters);
   await markRunsScanned(session.steamId);
   await autoLinkMods();
 
-  const skipped = [
-    candidates.length - accepted.length && `${candidates.length - accepted.length} already verified by another account`,
-    future && `${future} dated in the future`,
-  ].filter(Boolean);
+  const total = characters.reduce((n, c) => n + c.a10Runs, 0);
   revalidatePath("/", "layout");
   return {
     ok: Date.now(),
-    message: `Scanned ${accepted.length} A10 ${accepted.length === 1 ? "run" : "runs"}. Runs you’d already verified are kept.${skipped.length ? ` Not counted: ${skipped.join(", ")}.` : ""}`,
+    message: `Saved ${total} A10 ${total === 1 ? "run" : "runs"} across ${characters.length} ${characters.length === 1 ? "character" : "characters"}.`,
   };
 }
 

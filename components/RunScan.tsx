@@ -2,7 +2,6 @@
 
 import { useActionState, useEffect, useRef, useState, useTransition } from "react";
 import { scanRunsAction } from "@/app/actions";
-import { MAX_RUNS_PER_UPLOAD } from "@/lib/limits";
 import { characterName, parseRunFile, SKIP_LABELS, tallyRuns, type RunSkip, type RunSummary } from "@/lib/runs";
 
 type Found = { file: File; path: string };
@@ -112,11 +111,13 @@ export function RunScan({ viewerId, lastScanned }: { viewerId: string; lastScann
     setReading(false);
     setScan({ files, runs, skips });
     if (!files) { setProblem("No run files were in that folder. Choose the SlayTheSpire2 “steam” folder described above."); return; }
-    const unique = tallyRuns(runs).unique.slice(0, MAX_RUNS_PER_UPLOAD);
-    if (!unique.length) return;
+    // Only the per-character counts leave the browser.
+    const characters = tallyRuns(runs).byCharacter;
+    if (!characters.length) return;
+    const json = JSON.stringify({ characters });
     const body = new FormData();
-    body.set("payload", JSON.stringify({ runs: unique }));
-    setPayload(JSON.stringify({ runs: unique }));
+    body.set("payload", json);
+    setPayload(json);
     startTransition(() => formAction(body));
   };
 
@@ -151,8 +152,9 @@ export function RunScan({ viewerId, lastScanned }: { viewerId: string; lastScann
       <h3>Scan your run history</h3>
       <p>
         This lists the characters you’ve played at Ascension 10 on your profile and counts toward every mod you review.
-        Your files are read in your browser and never uploaded. Only finished solo A10 runs are counted, wins and losses alike,
-        and only these details are sent: character, Ascension, seed, start time, run length and game version. Whether you won is never sent.
+        Your files are read in your browser and never uploaded. Finished solo A10 runs are counted, wins and losses alike,
+        and only the totals are sent: each character’s A10 run count and the date of its latest run. Each scan updates
+        the characters it finds.
       </p>
       <p className="by">{lastScanned ? `Last scanned ${new Date(lastScanned).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}.` : "You haven’t scanned your runs yet."}</p>
 

@@ -13,7 +13,7 @@ A Next.js site where Slay the Spire 2 players sign in with Steam and review Work
 - Players can mark other players' reviews as helpful, and reviews can be sorted by most helpful, newest, or score.
 - The compare page puts up to three mods side by side, metric by metric.
 - Mod details are re-read from the Workshop in the background once a day, including the Workshop update date and subscriber count.
-- **Run verification:** each player scans their STS2 run history once, from their profile. The browser reads the `.run` files and sends only finished solo A10 runs (character, Ascension, seed, start time, length, game version; never win or loss). Profiles list every character played with its A10 run count, and reviews show a badge such as "✓ 23 A10 runs" for the mod's character. `REVIEW_MIN_RUNS` (default 3) sets how many verified A10 runs a player needs before reviewing. No public Steam profile is needed. Chrome and Edge remember the folder, so rescanning is one click.
+- **Run verification:** each player scans their STS2 run history once, from their profile. The browser reads the `.run` files, counts finished solo A10 runs per character (wins and losses alike), and sends only those counts and each character's latest run date. Individual runs are never sent or stored, so the database holds one small row per character a player has played. Each scan updates the characters it finds. Profiles list every character played with its A10 run count, and reviews show a badge such as "✓ 23 A10 runs" for the mod's character. `REVIEW_MIN_RUNS` (default 3) sets how many verified A10 runs a player needs before reviewing. No public Steam profile is needed. Chrome and Edge remember the folder, so rescanning is one click.
 - **Character linking:** mods are linked to their in-game character automatically by matching the Workshop title to the character's mod prefix (for example "The Tailor (Beta Branch)" → `CHARACTER.THETAILOR-THE_TAILOR`). When the title doesn't match, the first reviewer picks the character from their runs. Admins can correct links on the mod page. Only Workshop items tagged "Characters" can be added.
 - Spam protection: every write is rate-limited per player (`lib/limits.ts`), and `REVIEW_OWNERSHIP` decides whether players must own STS2 to review.
 - Admins (set in `ADMIN_STEAM_IDS`) can remove any mod, review or comment.
@@ -89,7 +89,7 @@ npm run build
 
 ## Known gaps
 
-- Run verification is strong evidence, not proof. Run files are plain text, so a determined player could fake them. The site rejects runs another account has already verified, runs dated in the future, and files whose name doesn't match the run inside, and a mod only counts runs dated after it was published.
+- Run verification is evidence, not proof. Run files are plain text, so a determined player could fake them. Because only counts are stored, the site can't tell when two accounts submit the same runs (for example a copied run folder), and a mod counts every A10 run with its character, including runs from before it was published. The browser still skips runs whose file name doesn't match the run inside.
 - Co-op runs aren't counted, because the files don't reliably say which player you were.
 - When a mod's title doesn't match its character, the first reviewer chooses the character. Admins can correct it from the mod page.
 - Run history locations on Mac and Linux are educated guesses until someone confirms them.

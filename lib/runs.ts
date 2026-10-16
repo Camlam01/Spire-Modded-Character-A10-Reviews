@@ -1,6 +1,6 @@
 // Reading STS2 run history files (saves/history/<start_time>.run). Runs in the browser, so raw files never leave the
-// player's computer; only RunSummary objects are sent to the server, which checks them again with RUN_SUMMARY.
-// Only qualifying runs are sent: solo, standard mode, Ascension 10+, not abandoned. Win or loss is never sent.
+// player's computer. Qualifying runs (solo, standard mode, Ascension 10+, not abandoned) are counted per character, and
+// only those counts are sent: CHARACTER_COUNTS below. Individual runs, and whether they were won, are never sent.
 import { z } from "zod";
 
 export const MIN_ASCENSION = 10;
@@ -14,6 +14,16 @@ export const RUN_SUMMARY = z.object({
   buildId: z.string().max(40),
 });
 export type RunSummary = z.infer<typeof RUN_SUMMARY>;
+
+/** What a scan sends: one entry per character played at A10. */
+export const CHARACTER_COUNTS = z.object({
+  characters: z.array(z.object({
+    characterId: RUN_SUMMARY.shape.characterId,
+    a10Runs: z.number().int().min(1).max(100000),
+    lastPlayed: z.number().int().positive(), // unix seconds of the most recent counted run
+  })).max(500),
+});
+export type CharacterCounts = z.infer<typeof CHARACTER_COUNTS>;
 
 export type RunSkip =
   | "not_json" | "unknown_format" | "abandoned" | "not_standard" | "below_a10" | "coop" | "name_mismatch" | "other_account_folder";
@@ -96,6 +106,7 @@ export function parseRunFile(text: string, path: string, viewerSteamId: string):
 export interface CharacterTally {
   characterId: string;
   a10Runs: number;
+  lastPlayed: number;
 }
 
 /** Count A10 runs per character, dropping duplicates (the same run saved in two profiles or synced copies). */
@@ -107,12 +118,14 @@ export function tallyRuns(runs: RunSummary[]): { unique: RunSummary[]; byCharact
     seen.add(k);
     return true;
   });
-  const map = new Map<string, number>();
-  for (const r of unique) map.set(r.characterId, (map.get(r.characterId) ?? 0) + 1);
-  return {
-    unique,
-    byCharacter: [...map].map(([characterId, a10Runs]) => ({ characterId, a10Runs })).sort((a, b) => b.a10Runs - a.a10Runs),
-  };
+  const map = new Map<string, CharacterTally>();
+  for (const r of unique) {
+    const t = map.get(r.characterId) ?? { characterId: r.characterId, a10Runs: 0, lastPlayed: 0 };
+    t.a10Runs++;
+    t.lastPlayed = Math.max(t.lastPlayed, r.startTime);
+    map.set(r.characterId, t);
+  }
+  return { unique, byCharacter: [...map.values()].sort((a, b) => b.a10Runs - a.a10Runs) };
 }
 
 export const SKIP_LABELS: Record<RunSkip, string> = {
