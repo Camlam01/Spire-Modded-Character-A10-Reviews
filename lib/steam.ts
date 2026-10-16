@@ -115,38 +115,59 @@ export interface WorkshopItem {
   previewUrl: string | null;
   creatorSteamId: string | null;
   appId: string;
+  updatedAt: string | null;
+  subscriptions: number | null;
 }
 
 export type WorkshopLookup =
   | { ok: true; item: WorkshopItem }
   | { ok: false; reason: "not_found" | "wrong_game" | "unavailable" };
 
-/** Read a Workshop item's public details. This endpoint needs no API key. */
-export async function getWorkshopItem(workshopId: string): Promise<WorkshopLookup> {
-  const body = new URLSearchParams({ itemcount: "1", "publishedfileids[0]": workshopId });
+/**
+ * Read public details for up to 100 Workshop items in one call. This endpoint needs no API key.
+ * Returns null if Steam didn't answer; otherwise one lookup per requested id.
+ */
+export async function getWorkshopItems(workshopIds: string[]): Promise<Map<string, WorkshopLookup> | null> {
+  const body = new URLSearchParams({ itemcount: String(workshopIds.length) });
+  workshopIds.forEach((id, i) => body.set(`publishedfileids[${i}]`, id));
   let json: { response?: { publishedfiledetails?: Record<string, unknown>[] } };
   try {
     const res = await fetch(`${API}/ISteamRemoteStorage/GetPublishedFileDetails/v1/`, { method: "POST", body, cache: "no-store" });
-    if (!res.ok) return { ok: false, reason: "unavailable" };
+    if (!res.ok) return null;
     json = await res.json();
   } catch {
-    return { ok: false, reason: "unavailable" };
+    return null;
   }
-  const d = json.response?.publishedfiledetails?.[0];
-  if (!d || d.result !== 1 || d.banned) return { ok: false, reason: "not_found" };
-  const appId = String(d.consumer_app_id ?? d.creator_app_id ?? "");
-  if (appId !== env.sts2AppId) return { ok: false, reason: "wrong_game" };
-  return {
-    ok: true,
-    item: {
-      workshopId,
-      title: String(d.title ?? "").slice(0, 200) || `Workshop item ${workshopId}`,
-      description: stripBbcode(String(d.description ?? "")).slice(0, 600),
-      previewUrl: httpsOrNull(d.preview_url),
-      creatorSteamId: /^\d{17}$/.test(String(d.creator ?? "")) ? String(d.creator) : null,
-      appId,
-    },
-  };
+  const out = new Map<string, WorkshopLookup>();
+  for (const id of workshopIds) out.set(id, { ok: false, reason: "not_found" });
+  for (const d of json.response?.publishedfiledetails ?? []) {
+    const id = String(d.publishedfileid ?? "");
+    if (!out.has(id)) continue;
+    if (d.result !== 1 || d.banned) continue;
+    const appId = String(d.consumer_app_id ?? d.creator_app_id ?? "");
+    if (appId !== env.sts2AppId) { out.set(id, { ok: false, reason: "wrong_game" }); continue; }
+    const updated = Number(d.time_updated);
+    const subs = Number(d.subscriptions);
+    out.set(id, {
+      ok: true,
+      item: {
+        workshopId: id,
+        title: String(d.title ?? "").slice(0, 200) || `Workshop item ${id}`,
+        description: stripBbcode(String(d.description ?? "")).slice(0, 600),
+        previewUrl: httpsOrNull(d.preview_url),
+        creatorSteamId: /^\d{17}$/.test(String(d.creator ?? "")) ? String(d.creator) : null,
+        appId,
+        updatedAt: Number.isFinite(updated) && updated > 0 ? new Date(updated * 1000).toISOString() : null,
+        subscriptions: Number.isFinite(subs) ? subs : null,
+      },
+    });
+  }
+  return out;
+}
+
+export async function getWorkshopItem(workshopId: string): Promise<WorkshopLookup> {
+  const found = await getWorkshopItems([workshopId]);
+  return found?.get(workshopId) ?? { ok: false, reason: "unavailable" };
 }
 
 function stripBbcode(s: string): string {

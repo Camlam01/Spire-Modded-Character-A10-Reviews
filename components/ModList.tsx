@@ -58,6 +58,7 @@ export function ModList({ mods, canAdd }: { mods: ModSummary[]; canAdd: boolean 
         >
           {SORTS.map(([v, t]) => <option key={v} value={v}>{t}</option>)}
         </select>
+        {mods.length > 1 ? <Link className="btn" href="/compare">Compare mods</Link> : null}
         {canAdd ? <Link className="btn primary" href="/mods/new">Add a mod</Link> : null}
       </div>
       <div className="toolbar">

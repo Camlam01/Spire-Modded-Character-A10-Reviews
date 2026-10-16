@@ -8,12 +8,18 @@ A Next.js site where Slay the Spire 2 players sign in with Steam and review Work
 - **Supabase (Postgres)** stores players, mods and reviews. The server uses the secret service-role key, and row level security blocks the public key entirely.
 - **Steam sign-in** uses Steam's OpenID login. The site never sees a Steam password, and each player is identified by their SteamID64.
 - **Steam Web API** supplies each player's name, avatar, and whether they own STS2 (shown as a badge on their reviews). Workshop lookups need no key: pasting a Workshop link fills in the mod's name, author, description and preview image, and the site rejects items that aren't for STS2.
-- Players can post one review per mod, which they can edit or delete. Admins (set in `ADMIN_STEAM_IDS`) can remove any mod or review.
+- Players can post one review per mod, which they can edit or delete, and can attach a short note to each metric score explaining it. Readers hover a score (or tap it on a phone) to read the note.
+- Each review, and each mod's combined review, has its own discussion thread.
+- Players can mark other players' reviews as helpful, and reviews can be sorted by most helpful, newest, or score.
+- The compare page puts up to three mods side by side, metric by metric.
+- Mod details are re-read from the Workshop in the background once a day, including the Workshop update date and subscriber count.
+- Spam protection: every write is rate-limited per player (`lib/limits.ts`), and `REVIEW_OWNERSHIP` decides whether players must own STS2 to review.
+- Admins (set in `ADMIN_STEAM_IDS`) can remove any mod, review or comment.
 
 ## 1. Create the database (Supabase)
 
 1. Make a free project at https://supabase.com.
-2. Open **SQL Editor**, paste the contents of `supabase/migrations/0001_init.sql`, and run it.
+2. Open **SQL Editor** and run each file in `supabase/migrations/` in order: `0001_init.sql`, then `0002_discussion_votes_limits.sql`. If you already ran the first one, just run the second.
 3. In **Project Settings → API**, copy the **Project URL** and the **service_role** secret key.
 
 ## 2. Get a Steam Web API key
@@ -69,14 +75,16 @@ npm run build
 | `lib/steam.ts` | Steam sign-in check, player profiles, STS2 ownership and Workshop lookups. |
 | `lib/session.ts` | The signed login cookie. |
 | `lib/data.ts` | Every database query. |
-| `app/actions.ts` | Adding mods, saving and deleting reviews, signing out. |
+| `lib/limits.ts` | Rate limits for adding mods, saving reviews, commenting and voting. |
+| `lib/refresh.ts` | Re-reads stale mods from the Workshop. |
+| `app/actions.ts` | Every write: mods, reviews, votes, comments, signing out. |
 | `app/api/auth/steam/` | The sign-in redirect and the return from Steam. |
-| `components/` | The mod list, mod page, review form and metric switchboard. |
+| `components/` | The mod list, mod page, review form, discussion threads, compare table and metric switchboard. |
 | `supabase/migrations/` | The database schema. |
 | `prototype/` | The original single-page prototype. |
 
 ## Known gaps
 
-- There is no rate limit on adding mods or posting reviews yet. Steam sign-in already makes spam much harder, but add one before you promote the site widely.
-- Owning STS2 is shown as a badge, not required. Players with a private game list show "Game list private".
-- Mod details are copied from Steam when the mod is added and aren't refreshed afterwards.
+- Players with a private game list can't be checked for ownership. With `REVIEW_OWNERSHIP=owners` they can still review and show a "Game list private" badge; switch to `verified` to require a public game list.
+- Comments are a flat list per thread, with no replies or editing (players can delete and repost).
+- The rate-limit log (`rate_events`) grows forever. Delete old rows occasionally, or add a scheduled clean-up later.

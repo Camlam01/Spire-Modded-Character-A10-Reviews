@@ -22,6 +22,16 @@ export const env = {
     return s;
   },
   get sts2AppId() { return process.env.STS2_APP_ID || "2868840"; },
+  /**
+   * Who may post reviews:
+   * "anyone"      - any signed-in player
+   * "owners"      - blocks players Steam shows as not owning STS2; private game lists are allowed (default)
+   * "verified"    - only players Steam confirms own STS2 (private game lists are blocked)
+   */
+  get reviewOwnership(): "anyone" | "owners" | "verified" {
+    const v = process.env.REVIEW_OWNERSHIP;
+    return v === "anyone" || v === "verified" ? v : "owners";
+  },
   get adminIds(): Set<string> {
     return new Set((process.env.ADMIN_STEAM_IDS || "").split(",").map((s) => s.trim()).filter(Boolean));
   },

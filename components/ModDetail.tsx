@@ -1,32 +1,65 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
-import type { ModSummary, ReviewView } from "@/lib/data";
+import { useEffect, useMemo, useState } from "react";
+import type { CommentView, ModSummary, ReviewView } from "@/lib/data";
 import { CATEGORIES, METRICS, fullLabel } from "@/lib/metrics";
 import { categoryAverage, combinedTotal, formatScore, isScore, reviewTotal } from "@/lib/scoring";
 import { deleteModAction, deleteReviewAction } from "@/app/actions";
 import { catStyle, Medal } from "./Medal";
 import { useMetrics } from "./MetricsProvider";
+import { ConfirmAction } from "./ConfirmAction";
+import { CommentThread, HelpfulButton } from "./Discussion";
 
 interface Props {
   mod: ModSummary;
   reviews: ReviewView[];
+  comments: CommentView[];
   viewerId: string | null;
   admin: boolean;
 }
 
-export function ModDetail({ mod, reviews, viewerId, admin }: Props) {
+type ReviewSort = "helpful" | "newest" | "high" | "low";
+const SORTS: [ReviewSort, string][] = [["helpful", "Most helpful"], ["newest", "Newest"], ["high", "Highest score"], ["low", "Lowest score"]];
+
+export function ModDetail({ mod, reviews, comments, viewerId, admin }: Props) {
   const { enabled, enabledIds } = useMetrics();
+  const [sort, setSort] = useState<ReviewSort>("helpful");
+  useEffect(() => {
+    try { const s = localStorage.getItem("sts2r:reviewSort") as ReviewSort | null; if (s && SORTS.some(([v]) => v === s)) setSort(s); } catch {}
+  }, []);
+
   const total = combinedTotal(mod.stats, enabledIds);
   const counted = enabledIds.filter((id) => mod.stats[id]).length;
   const mine = reviews.find((r) => r.steamId === viewerId);
-  const sorted = [...reviews].sort((a, b) => Number(b.steamId === viewerId) - Number(a.steamId === viewerId));
-  const workshopUrl = `https://steamcommunity.com/sharedfiles/filedetails/?id=${mod.workshopId}`;
+  const selfHref = `/mods/${mod.id}`;
+  const signInHref = `/api/auth/steam/login?next=${encodeURIComponent(selfHref)}`;
   const reviewHref = `/mods/${mod.id}/review`;
+  const workshopUrl = `https://steamcommunity.com/sharedfiles/filedetails/?id=${mod.workshopId}`;
   const writeLink = viewerId
     ? <Link className="btn primary" href={reviewHref}>{mine ? "Edit your review" : "Write a review"}</Link>
     : <a className="btn steam" href={`/api/auth/steam/login?next=${encodeURIComponent(reviewHref)}`}>Sign in with Steam to review</a>;
+
+  const commentsByReview = useMemo(() => {
+    const m = new Map<string, CommentView[]>();
+    for (const c of comments) {
+      const k = c.reviewId ?? "combined";
+      m.set(k, [...(m.get(k) ?? []), c]);
+    }
+    return m;
+  }, [comments]);
+
+  const sorted = useMemo(() => {
+    const score = (r: ReviewView) => reviewTotal(r.scores, enabledIds) ?? -1;
+    const by: Record<ReviewSort, (a: ReviewView, b: ReviewView) => number> = {
+      helpful: (a, b) => b.helpful - a.helpful || b.updatedAt.localeCompare(a.updatedAt),
+      newest: (a, b) => b.updatedAt.localeCompare(a.updatedAt),
+      high: (a, b) => score(b) - score(a),
+      low: (a, b) => score(a) - score(b),
+    };
+    // Your own review stays on top.
+    return [...reviews].sort((a, b) => Number(b.steamId === viewerId) - Number(a.steamId === viewerId) || by[sort](a, b));
+  }, [reviews, sort, enabledIds, viewerId]);
 
   return (
     <>
@@ -40,10 +73,15 @@ export function ModDetail({ mod, reviews, viewerId, admin }: Props) {
               mod.reviewCount ? `${mod.reviewCount} ${mod.reviewCount === 1 ? "review" : "reviews"}` : "No reviews yet",
               `${counted} of ${METRICS.length} metrics counted`].filter(Boolean).join(" · ")}
           </div>
+          <div className="meta num">
+            {[mod.workshopUpdatedAt ? `Workshop updated ${new Date(mod.workshopUpdatedAt).toLocaleDateString(undefined, { dateStyle: "medium" })}` : null,
+              mod.subscriptions != null ? `${mod.subscriptions.toLocaleString()} subscribers` : null].filter(Boolean).join(" · ")}
+          </div>
           {mod.description ? <p className="desc">{mod.description.length > 300 ? mod.description.slice(0, 300) + "…" : mod.description}</p> : null}
           <div className="actions">
             {writeLink}
             <a className="btn" href={workshopUrl} target="_blank" rel="noopener noreferrer">Steam Workshop page ↗</a>
+            <Link className="btn" href={`/compare?ids=${mod.id}`}>Compare</Link>
             {admin ? <ConfirmAction label="Remove mod" prompt={`Remove ${mod.title} and all its reviews?`} action={deleteModAction} fields={{ modId: mod.id }} /> : null}
           </div>
         </div>
@@ -52,7 +90,7 @@ export function ModDetail({ mod, reviews, viewerId, admin }: Props) {
 
       <div className="section-title">
         <h3>Combined review</h3>
-        <span>Average of every review, per metric. Numbers in brackets are how many reviewers scored it.</span>
+        <span>Average of every review, per metric. Numbers in brackets are how many reviewers scored it. Hover a metric with ✎ to read reviewers’ notes.</span>
       </div>
       <div className="breakdown">
         {CATEGORIES.map((c) => {
@@ -62,12 +100,28 @@ export function ModDetail({ mod, reviews, viewerId, admin }: Props) {
               <div className="catblock-head"><h4>{c.name}</h4><b className="num">{a.off ? "off" : formatScore(a.value)}</b></div>
               {c.metrics.map((m) => {
                 const s = mod.stats[m.id];
-                return (
-                  <div key={m.id} className={`mrow${enabled.has(m.id) ? "" : " off"}`} title={m.question}>
-                    <span>{m.label} <span className="n num">{s ? `(${s.n})` : ""}</span></span>
+                const notes = reviews.filter((r) => r.metricNotes[m.id]);
+                const row = (
+                  <>
+                    <span>{m.label} <span className="n num">{s ? `(${s.n})` : ""}</span>{notes.length ? <span className="note-mark" aria-hidden="true"> ✎</span> : null}</span>
                     <span className="track"><span className="fill" style={{ width: `${(s?.avg ?? 0) * 10}%` }} /></span>
                     <span className="v num">{formatScore(s?.avg)}</span>
+                  </>
+                );
+                return notes.length ? (
+                  <div key={m.id} className={`mrow has-tip${enabled.has(m.id) ? "" : " off"}`} tabIndex={0}
+                    aria-label={`${m.label}: ${formatScore(s?.avg)}. ${notes.length} reviewer ${notes.length === 1 ? "note" : "notes"}.`}>
+                    {row}
+                    <div className="tip" role="tooltip">
+                      <b>{fullLabel(m)}: what reviewers said</b>
+                      {notes.slice(0, 4).map((r) => (
+                        <p key={r.id}><span className="num">{formatScore(r.scores[m.id])}</span> · {r.personaName}: {r.metricNotes[m.id]}</p>
+                      ))}
+                      {notes.length > 4 ? <p className="by">and {notes.length - 4} more in the reviews below</p> : null}
+                    </div>
                   </div>
+                ) : (
+                  <div key={m.id} className={`mrow${enabled.has(m.id) ? "" : " off"}`} title={m.question}>{row}</div>
                 );
               })}
             </div>
@@ -75,13 +129,29 @@ export function ModDetail({ mod, reviews, viewerId, admin }: Props) {
         })}
       </div>
 
+      <details className="discussion" open>
+        <summary><h3>Discuss the combined review</h3><span className="by num">{commentsByReview.get("combined")?.length ?? 0} comments</span></summary>
+        <CommentThread modId={mod.id} reviewId={null} comments={commentsByReview.get("combined") ?? []} viewerId={viewerId} admin={admin} signInHref={signInHref} />
+      </details>
+
       <div className="section-title">
         <h3>Individual reviews</h3>
-        <span className="num">{reviews.length} logged</span>
+        <span className="toolbar">
+          <span className="num">{reviews.length} logged</span>
+          {reviews.length > 1 ? (
+            <select id="review-sort" aria-label="Sort reviews" value={sort}
+              onChange={(e) => { const s = e.target.value as ReviewSort; setSort(s); try { localStorage.setItem("sts2r:reviewSort", s); } catch {} }}>
+              {SORTS.map(([v, t]) => <option key={v} value={v}>{t}</option>)}
+            </select>
+          ) : null}
+        </span>
       </div>
       {sorted.length ? (
         <div className="reviews">
-          {sorted.map((r) => <ReviewCard key={r.id} r={r} modId={mod.id} mine={r.steamId === viewerId} admin={admin} />)}
+          {sorted.map((r) => (
+            <ReviewCard key={r.id} r={r} modId={mod.id} viewerId={viewerId} admin={admin} signInHref={signInHref}
+              comments={commentsByReview.get(r.id) ?? []} />
+          ))}
         </div>
       ) : (
         <div className="empty">
@@ -94,67 +164,74 @@ export function ModDetail({ mod, reviews, viewerId, admin }: Props) {
   );
 }
 
-function ReviewCard({ r, modId, mine, admin }: { r: ReviewView; modId: string; mine: boolean; admin: boolean }) {
-    const { enabled, enabledIds } = useMetrics();
-    const t = reviewTotal(r.scores, enabledIds);
-    const n = enabledIds.filter((id) => isScore(r.scores[id])).length;
-    const hours = r.playtimeMinutes != null ? Math.round(r.playtimeMinutes / 60) : null;
-    return (
-      <article className={`review${mine ? " mine" : ""}`}>
-        <div className="review-head">
-          <Medal value={t} size="sm" />
-          <div className="who">
-            {r.avatarUrl ? <img src={r.avatarUrl} alt="" /> : null}
-            <div>
-              <strong>{r.profileUrl ? <a href={r.profileUrl} target="_blank" rel="noopener noreferrer">{r.personaName}</a> : r.personaName}</strong>
-              {mine ? <span className="tag">You</span> : null}
-              <div className="by num">
-                {[r.a10Runs != null ? `${r.a10Runs} A10 ${r.a10Runs === 1 ? "run" : "runs"}` : null, `${n} metrics counted`, new Date(r.updatedAt).toLocaleDateString()].filter(Boolean).join(" · ")}
-              </div>
+function ReviewCard({ r, modId, viewerId, admin, signInHref, comments }: {
+  r: ReviewView; modId: string; viewerId: string | null; admin: boolean; signInHref: string; comments: CommentView[];
+}) {
+  const { enabled, enabledIds } = useMetrics();
+  const mine = r.steamId === viewerId;
+  const t = reviewTotal(r.scores, enabledIds);
+  const n = enabledIds.filter((id) => isScore(r.scores[id])).length;
+  const hours = r.playtimeMinutes != null ? Math.round(r.playtimeMinutes / 60) : null;
+  const noteCount = Object.keys(r.metricNotes).length;
+
+  return (
+    <article className={`review${mine ? " mine" : ""}`}>
+      <div className="review-head">
+        <Medal value={t} size="sm" />
+        <div className="who">
+          {r.avatarUrl ? <img src={r.avatarUrl} alt="" /> : null}
+          <div>
+            <strong>{r.profileUrl ? <a href={r.profileUrl} target="_blank" rel="noopener noreferrer">{r.personaName}</a> : r.personaName}</strong>
+            {mine ? <span className="tag">You</span> : null}
+            <div className="by num">
+              {[r.a10Runs != null ? `${r.a10Runs} A10 ${r.a10Runs === 1 ? "run" : "runs"}` : null, `${n} metrics counted`, new Date(r.updatedAt).toLocaleDateString()].filter(Boolean).join(" · ")}
             </div>
           </div>
-          {r.ownsGame ? <span className="badge ok">Owns STS2{hours != null ? ` · ${hours}h played` : ""}</span>
-            : r.ownsGame === null ? <span className="badge">Game list private</span> : null}
-          {mine ? (
-            <span className="actions">
-              <Link className="btn small" href={`/mods/${modId}/review`}>Edit</Link>
-              <ConfirmAction label="Delete" prompt="Delete your review?" action={deleteReviewAction} fields={{ reviewId: r.id, modId }} />
-            </span>
-          ) : admin ? (
-            <ConfirmAction label="Remove" prompt="Remove this review?" action={deleteReviewAction} fields={{ reviewId: r.id, modId, asAdmin: "1" }} />
-          ) : null}
         </div>
-        {r.notes ? <p className="notes">{r.notes}</p> : null}
-        <details>
-          <summary>All scores</summary>
-          <div className="scoregrid">
-            {METRICS.map((m) => (
-              <div key={m.id} className={enabled.has(m.id) ? "" : "off"} style={catStyle(m.cat)}>
+        {r.ownsGame ? <span className="badge ok">Owns STS2{hours != null ? ` · ${hours}h played` : ""}</span>
+          : r.ownsGame === null ? <span className="badge">Game list private</span> : null}
+        {mine ? (
+          <span className="actions">
+            <Link className="btn small" href={`/mods/${modId}/review`}>Edit</Link>
+            <ConfirmAction label="Delete" prompt="Delete your review?" action={deleteReviewAction} fields={{ reviewId: r.id, modId }} />
+          </span>
+        ) : admin ? (
+          <ConfirmAction label="Remove" prompt="Remove this review?" action={deleteReviewAction} fields={{ reviewId: r.id, modId, asAdmin: "1" }} />
+        ) : null}
+      </div>
+      {r.notes ? <p className="notes">{r.notes}</p> : null}
+
+      <details open={noteCount > 0}>
+        <summary>All scores{noteCount ? ` · ${noteCount} with notes (hover ✎ to read)` : ""}</summary>
+        <div className="scoregrid">
+          {METRICS.map((m) => {
+            const note = r.metricNotes[m.id];
+            const cls = `${enabled.has(m.id) ? "" : "off"}${note ? " has-tip" : ""}`;
+            return note ? (
+              <div key={m.id} className={cls} style={catStyle(m.cat)} tabIndex={0}
+                aria-label={`${fullLabel(m)}: ${formatScore(r.scores[m.id])}. Note: ${note}`}>
+                <span>{fullLabel(m)} <span className="note-mark" aria-hidden="true">✎</span></span>
+                <span className="num">{formatScore(r.scores[m.id])}</span>
+                <div className="tip" role="tooltip"><b>{fullLabel(m)} · {formatScore(r.scores[m.id])}</b><p>{note}</p></div>
+              </div>
+            ) : (
+              <div key={m.id} className={cls} style={catStyle(m.cat)}>
                 <span>{fullLabel(m)}</span>
                 <span className="num">{formatScore(r.scores[m.id])}</span>
               </div>
-            ))}
-          </div>
-        </details>
-      </article>
-    );
-}
+            );
+          })}
+        </div>
+      </details>
 
-/** A small button that asks for confirmation inline before submitting a server action. */
-function ConfirmAction({ label, prompt, action, fields }: {
-  label: string; prompt: string; action: (f: FormData) => Promise<void>; fields: Record<string, string>;
-}) {
-  const [asking, setAsking] = useState(false);
-  const [pending, setPending] = useState(false);
-  if (!asking) return <button type="button" className="btn small danger" onClick={() => setAsking(true)}>{label}</button>;
-  return (
-    <span className="confirm">
-      <span>{prompt}</span>
-      <form action={async (f) => { setPending(true); await action(f); setPending(false); setAsking(false); }}>
-        {Object.entries(fields).map(([k, v]) => <input key={k} type="hidden" name={k} value={v} />)}
-        <button type="submit" className="btn small danger" disabled={pending}>{pending ? "Working…" : label}</button>
-      </form>
-      <button type="button" className="btn small" onClick={() => setAsking(false)}>Keep</button>
-    </span>
+      <div className="review-foot">
+        <HelpfulButton reviewId={r.id} count={r.helpful} voted={r.votedByMe}
+          disabledReason={!viewerId ? "Sign in with Steam to vote" : mine ? "You can’t vote on your own review" : null} />
+        <details className="discussion inline">
+          <summary>Discussion · <span className="num">{comments.length}</span></summary>
+          <CommentThread modId={modId} reviewId={r.id} comments={comments} viewerId={viewerId} admin={admin} signInHref={signInHref} />
+        </details>
+      </div>
+    </article>
   );
 }

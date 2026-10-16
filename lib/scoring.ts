@@ -22,6 +22,20 @@ export function cleanScores(input: unknown): Scores {
   return out;
 }
 
+export type MetricNotes = Record<string, string>;
+export const METRIC_NOTE_MAX = 500;
+
+/** Keep only trimmed, non-empty notes on known metrics. */
+export function cleanMetricNotes(input: unknown): MetricNotes {
+  const out: MetricNotes = {};
+  if (!input || typeof input !== "object") return out;
+  for (const id of METRIC_IDS) {
+    const v = (input as Record<string, unknown>)[id];
+    if (typeof v === "string" && v.trim()) out[id] = v.trim().slice(0, METRIC_NOTE_MAX);
+  }
+  return out;
+}
+
 /** One review's total: the average of its scores on the metrics switched on. */
 export const reviewTotal = (scores: Scores, enabled: readonly string[]): number | null =>
   mean(enabled.map((id) => scores[id]).filter(isScore));

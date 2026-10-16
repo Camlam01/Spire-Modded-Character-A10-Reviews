@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useActionState, useState } from "react";
 import { CATEGORIES, METRICS } from "@/lib/metrics";
-import { formatScore, isScore, reviewTotal, type Scores } from "@/lib/scoring";
+import { formatScore, isScore, METRIC_NOTE_MAX, reviewTotal, type MetricNotes, type Scores } from "@/lib/scoring";
 import { saveReviewAction } from "@/app/actions";
 import { catStyle, Medal } from "./Medal";
 import { useMetrics } from "./MetricsProvider";
@@ -11,7 +11,7 @@ import { useMetrics } from "./MetricsProvider";
 interface Props {
   modId: string;
   modTitle: string;
-  existing: { a10Runs: number | null; notes: string; scores: Scores } | null;
+  existing: { a10Runs: number | null; notes: string; scores: Scores; metricNotes: MetricNotes } | null;
 }
 
 export function ReviewForm({ modId, modTitle, existing }: Props) {
@@ -20,6 +20,8 @@ export function ReviewForm({ modId, modTitle, existing }: Props) {
   // Controlled, so a failed save doesn't clear what the player typed (React resets uncontrolled fields after an action).
   const [runs, setRuns] = useState(existing?.a10Runs != null ? String(existing.a10Runs) : "");
   const [notes, setNotes] = useState(existing?.notes ?? "");
+  const [metricNotes, setMetricNotes] = useState<MetricNotes>(existing?.metricNotes ?? {});
+  const [openNotes, setOpenNotes] = useState<Set<string>>(() => new Set(Object.keys(existing?.metricNotes ?? {})));
   const [state, formAction, pending] = useActionState(saveReviewAction, null);
 
   const scored = METRICS.filter((m) => isScore(scores[m.id])).length;
@@ -40,6 +42,7 @@ export function ReviewForm({ modId, modTitle, existing }: Props) {
       </p>
       <input type="hidden" name="modId" value={modId} />
       <input type="hidden" name="scores" value={JSON.stringify(scores)} />
+      <input type="hidden" name="metricNotes" value={JSON.stringify(metricNotes)} />
 
       <div className="field narrow">
         <label htmlFor="a10Runs">A10 runs played</label>
@@ -72,6 +75,23 @@ export function ReviewForm({ modId, modTitle, existing }: Props) {
                   <output htmlFor={`s-${m.id}`} className={set ? "" : "unset"}>{set ? formatScore(v) : "—"}</output>
                   <button type="button" className="btn small" onClick={() => setScore(m.id, null)} disabled={!set}>Clear</button>
                 </div>
+                {set && openNotes.has(m.id) ? (
+                  <div className="metric-note">
+                    <label htmlFor={`n-${m.id}`} className="sr-only">Note explaining your {m.label} score</label>
+                    <textarea
+                      id={`n-${m.id}`}
+                      maxLength={METRIC_NOTE_MAX}
+                      placeholder={`Why ${formatScore(v)} for ${m.label.toLowerCase()}? Readers see this when they hover your score.`}
+                      value={metricNotes[m.id] ?? ""}
+                      onChange={(e) => setMetricNotes((n) => ({ ...n, [m.id]: e.target.value }))}
+                    />
+                    <span className="hint num">{(metricNotes[m.id] ?? "").length}/{METRIC_NOTE_MAX}</span>
+                  </div>
+                ) : set ? (
+                  <button type="button" className="linkish note-add" onClick={() => setOpenNotes((o) => new Set(o).add(m.id))}>
+                    Add a note explaining this score
+                  </button>
+                ) : null}
               </div>
             );
           })}

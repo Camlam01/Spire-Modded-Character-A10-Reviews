@@ -198,3 +198,60 @@ fieldset.cat legend { font-family: var(--font-display); font-weight: 700; font-s
   .card, .btn, .chip { transition: border-color .15s, background-color .15s, filter .15s; }
   .fill { transition: width .3s ease; }
 }
+
+/* Metric notes */
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.metric-note { display: grid; gap: 2px; }
+.metric-note textarea { border: 1px solid var(--line); background: var(--raised); border-radius: 8px; padding: 7px 10px; min-height: 64px; resize: vertical; width: 100%; font-size: .95rem; }
+.metric-note .hint { color: var(--muted); font-size: .78rem; justify-self: end; }
+.note-add { justify-self: start; font-size: .88rem; }
+.note-mark { color: var(--accent); font-weight: 700; }
+.has-tip { position: relative; cursor: help; }
+.has-tip:focus-visible { outline-offset: 1px; }
+.tip { display: none; position: absolute; z-index: 10; left: 0; right: 0; top: calc(100% + 6px); min-width: 220px; max-width: 420px;
+  background: var(--raised); color: var(--ink); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px;
+  box-shadow: 0 10px 28px -12px rgba(0,0,0,.45); font-size: .9rem; text-align: left; }
+.tip b { display: block; color: var(--cat, var(--ink)); margin-bottom: 4px; }
+.tip p { margin: 4px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.has-tip:hover .tip, .has-tip:focus .tip, .has-tip:focus-within .tip { display: block; }
+.scoregrid div.has-tip { border-bottom-style: solid; border-bottom-color: color-mix(in srgb, var(--accent) 40%, var(--line)); }
+.scoregrid .tip { display: none; }
+.scoregrid .has-tip:hover .tip, .scoregrid .has-tip:focus .tip { display: block; }
+
+/* Votes and discussion */
+.review-foot { display: flex; gap: 14px; align-items: flex-start; flex-wrap: wrap; border-top: 1px solid var(--line); padding-top: 10px; }
+.review-foot .discussion { flex: 1 1 260px; min-width: 0; }
+.helpful-form { display: inline-flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.helpful { border: 1px solid var(--line); background: var(--raised); border-radius: 999px; padding: 3px 12px; font-size: .88rem; cursor: pointer; color: var(--muted); }
+.helpful[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); font-weight: 700; }
+.helpful.static { cursor: default; display: inline-block; }
+.discussion > summary { cursor: pointer; display: flex; gap: 10px; align-items: baseline; }
+.discussion > summary h3 { font-size: 1.15rem; display: inline; }
+.discussion.inline > summary { display: list-item; color: var(--accent); font-size: .92rem; }
+details.discussion:not(.inline) { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 14px 16px; }
+.thread { display: grid; gap: 12px; margin-top: 10px; }
+.comments { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.comment { display: grid; grid-template-columns: 32px minmax(0, 1fr); gap: 10px; }
+.comment img, .avatar-blank { width: 32px; height: 32px; border-radius: 6px; background: var(--line); }
+.comment-head { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.comment-head strong a { color: inherit; text-decoration: none; }
+.comment-head .by { font-size: .82rem; }
+.comment p { margin: 2px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; max-width: 70ch; }
+.comment-form { display: grid; gap: 8px; }
+.comment-form textarea { border: 1px solid var(--line); background: var(--raised); border-radius: 8px; padding: 8px 12px; min-height: 70px; resize: vertical; width: 100%; }
+
+/* Compare */
+.compare-pickers { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.compare-pickers select { border: 1px solid var(--line); background: var(--raised); border-radius: 8px; padding: 7px 12px; max-width: 100%; min-width: 0; flex: 1 1 200px; }
+.table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--r); background: var(--surface); }
+.ctable { width: 100%; border-collapse: collapse; font-size: .95rem; }
+.ctable th, .ctable td { padding: 8px 12px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; }
+.ctable th:first-child, .ctable td:first-child { text-align: left; }
+.ctable thead th { vertical-align: bottom; font-family: var(--font-display); font-size: 1.05rem; white-space: normal; min-width: 130px; }
+.ctable thead th a { color: inherit; }
+.ctable .cathead td { font-weight: 700; color: var(--cat); font-size: .8rem; letter-spacing: .08em; text-transform: uppercase; background: color-mix(in srgb, var(--cat) 8%, var(--surface)); }
+.ctable td.best { font-weight: 700; color: var(--good); }
+.ctable tr.off td { opacity: .4; }
+.ctable tr.total td { font-weight: 700; font-size: 1.05rem; border-bottom: 0; }
+.ctable .medal-cell { display: flex; justify-content: flex-end; }
+.card-compare { justify-self: start; font-size: .85rem; }

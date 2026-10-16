@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { ReviewForm } from "@/components/ReviewForm";
 import { getMod, getMyReview } from "@/lib/data";
 import { missingEnv } from "@/lib/env";
-import { cleanScores } from "@/lib/scoring";
+import { cleanMetricNotes, cleanScores } from "@/lib/scoring";
 import { getSession } from "@/lib/session";
 
 export const metadata = { title: "Write a review" };
@@ -22,7 +22,7 @@ export default async function ReviewPage({ params }: { params: Promise<{ id: str
       <ReviewForm
         modId={mod.id}
         modTitle={mod.title}
-        existing={mine ? { a10Runs: mine.a10_runs, notes: mine.notes, scores: cleanScores(mine.scores) } : null}
+        existing={mine ? { a10Runs: mine.a10_runs, notes: mine.notes, scores: cleanScores(mine.scores), metricNotes: cleanMetricNotes(mine.metric_notes) } : null}
       />
     </>
   );

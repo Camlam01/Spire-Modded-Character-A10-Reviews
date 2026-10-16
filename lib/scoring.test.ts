@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { categoryAverage, cleanScores, combinedTotal, combineReviews, formatScore, isScore, reviewTotal } from "./scoring.ts";
+import { categoryAverage, cleanMetricNotes, cleanScores, combinedTotal, combineReviews, formatScore, isScore, reviewTotal } from "./scoring.ts";
 
 test("isScore accepts 0–10 in half steps only", () => {
   for (const v of [0, 0.5, 5, 9.5, 10]) assert.equal(isScore(v), true, String(v));
@@ -9,6 +9,14 @@ test("isScore accepts 0–10 in half steps only", () => {
 
 test("cleanScores drops unknown metrics and bad values", () => {
   assert.deepEqual(cleanScores({ art: 7.5, bogus: 5, immersion: 11, enjoyment: 3 }), { art: 7.5, enjoyment: 3 });
+});
+
+test("cleanMetricNotes trims, drops blanks and unknown metrics, and caps length", () => {
+  const long = "x".repeat(600);
+  assert.deepEqual(cleanMetricNotes({ art: "  lovely  ", immersion: "   ", bogus: "hi", enjoyment: long, outliers: 5 }), {
+    art: "lovely",
+    enjoyment: "x".repeat(500),
+  });
 });
 
 test("reviewTotal averages only enabled metrics that were scored", () => {
