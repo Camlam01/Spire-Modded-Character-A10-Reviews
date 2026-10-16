@@ -3,20 +3,20 @@ import { after } from "next/server";
 import { notFound } from "next/navigation";
 import { ModDetail } from "@/components/ModDetail";
 import { getComments, getMod, getReviews } from "@/lib/data";
-import { missingEnv } from "@/lib/env";
+import { siteNotReady } from "@/lib/ready";
 import { refreshStaleMods } from "@/lib/refresh";
 import { getSession, isAdmin } from "@/lib/session";
 
 type Props = { params: Promise<{ id: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  if (missingEnv().length) return {};
+  if (await siteNotReady()) return {};
   const mod = await getMod((await params).id, null);
   return mod ? { title: mod.title } : {};
 }
 
 export default async function ModPage({ params }: Props) {
-  if (missingEnv().length) return null;
+  if (await siteNotReady()) return null;
   const [{ id }, session] = await Promise.all([params, getSession()]);
   const viewer = session?.steamId ?? null;
   const mod = await getMod(id, viewer);

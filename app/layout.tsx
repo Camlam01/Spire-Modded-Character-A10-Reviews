@@ -3,10 +3,10 @@ import Link from "next/link";
 import { Alegreya_Sans, Alegreya_SC } from "next/font/google";
 import { MetricsProvider } from "@/components/MetricsProvider";
 import { MetricFilters } from "@/components/MetricFilters";
-import { SetupNotice } from "@/components/SetupNotice";
+import { DatabaseNotice, SetupNotice } from "@/components/SetupNotice";
 import { missingEnv } from "@/lib/env";
 import { getSession } from "@/lib/session";
-import { getPlayer } from "@/lib/data";
+import { databaseProblem, getPlayer } from "@/lib/data";
 import { signOutAction } from "./actions";
 import "./globals.css";
 
@@ -23,7 +23,9 @@ export const metadata: Metadata = {
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const missing = missingEnv();
-  const session = missing.length ? null : await getSession();
+  const dbProblem = missing.length ? null : await databaseProblem();
+  const ready = !missing.length && !dbProblem;
+  const session = ready ? await getSession() : null;
   const player = session ? await getPlayer(session.steamId) : null;
 
   return (
@@ -34,7 +36,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <div className="top-in">
               <Link className="brand" href="/"><h1>STS2 Character Mod Reviews</h1><span className="asc">Ascension 10</span></Link>
               <span className="spacer" />
-              {missing.length ? null : session ? (
+              {!ready ? null : session ? (
                 <div className="me">
                   <Link className="me-link" href="/profile">
                     {player?.avatar_url ? <img src={player.avatar_url} alt="" /> : null}
@@ -49,7 +51,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           </header>
           <main className="wrap">
             <MetricFilters />
-            <section className="content">{missing.length ? <SetupNotice missing={missing} /> : children}</section>
+            <section className="content">{missing.length ? <SetupNotice missing={missing} /> : dbProblem ? <DatabaseNotice problem={dbProblem} /> : children}</section>
           </main>
         </MetricsProvider>
       </body>

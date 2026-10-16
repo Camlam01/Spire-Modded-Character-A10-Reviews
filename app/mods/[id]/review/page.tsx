@@ -3,7 +3,8 @@ import { notFound, redirect } from "next/navigation";
 import { ReviewForm } from "@/components/ReviewForm";
 import { LinkCharacterForm } from "@/components/CharacterLink";
 import { getCharacterRuns, getMod, getMyReview, getRunStats } from "@/lib/data";
-import { env, missingEnv } from "@/lib/env";
+import { env } from "@/lib/env";
+import { siteNotReady } from "@/lib/ready";
 import { isModdedCharacter } from "@/lib/runs";
 import { cleanMetricNotes, cleanScores } from "@/lib/scoring";
 import { getSession } from "@/lib/session";
@@ -11,7 +12,7 @@ import { getSession } from "@/lib/session";
 export const metadata = { title: "Write a review" };
 
 export default async function ReviewPage({ params }: { params: Promise<{ id: string }> }) {
-  if (missingEnv().length) return null;
+  if (await siteNotReady()) return null;
   const [{ id }, session] = await Promise.all([params, getSession()]);
   if (!session) redirect(`/api/auth/steam/login?next=${encodeURIComponent(`/mods/${id}/review`)}`);
   const mod = await getMod(id, session.steamId);

@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { RunScan } from "@/components/RunScan";
 import { ProfileReviewTotal } from "@/components/ProfileReviewTotal";
 import { getCharacterRuns, getPlayerProfile, getPlayerReviews } from "@/lib/data";
-import { missingEnv } from "@/lib/env";
+import { siteNotReady } from "@/lib/ready";
 import { characterName, isModdedCharacter } from "@/lib/runs";
 import { cleanScores } from "@/lib/scoring";
 import { getSession } from "@/lib/session";
@@ -12,14 +12,14 @@ import { getSession } from "@/lib/session";
 type Props = { params: Promise<{ steamId: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  if (missingEnv().length) return {};
+  if (await siteNotReady()) return {};
   const { steamId } = await params;
   const p = /^\d{17}$/.test(steamId) ? await getPlayerProfile(steamId) : null;
   return p ? { title: p.persona_name || "Player" } : {};
 }
 
 export default async function PlayerPage({ params }: Props) {
-  if (missingEnv().length) return null;
+  if (await siteNotReady()) return null;
   const [{ steamId }, session] = await Promise.all([params, getSession()]);
   if (!/^\d{17}$/.test(steamId)) notFound();
   const player = await getPlayerProfile(steamId);

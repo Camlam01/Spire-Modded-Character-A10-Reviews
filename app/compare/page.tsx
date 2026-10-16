@@ -1,13 +1,13 @@
 import Link from "next/link";
 import { CompareView } from "@/components/CompareView";
 import { isUuid, listMods } from "@/lib/data";
-import { missingEnv } from "@/lib/env";
+import { siteNotReady } from "@/lib/ready";
 import { getSession } from "@/lib/session";
 
 export const metadata = { title: "Compare mods" };
 
 export default async function ComparePage({ searchParams }: { searchParams: Promise<{ ids?: string }> }) {
-  if (missingEnv().length) return null;
+  if (await siteNotReady()) return null;
   const [{ ids }, session] = await Promise.all([searchParams, getSession()]);
   const mods = await listMods(session?.steamId ?? null);
   const known = new Set(mods.map((m) => m.id));

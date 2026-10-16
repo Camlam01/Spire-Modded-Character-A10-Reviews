@@ -10,6 +10,34 @@ function db(): SupabaseClient {
   return client;
 }
 
+export type DatabaseProblem = "missing_tables" | "outdated_tables" | "bad_key" | "unreachable";
+let databaseOk = false;
+
+/**
+ * Whether the database is reachable and set up, so a half-finished setup shows instructions instead of a crash.
+ * Checks a table from the newest migration; remembered once it passes.
+ */
+export async function databaseProblem(): Promise<DatabaseProblem | null> {
+  if (databaseOk) return null;
+  try {
+    const [first, newest] = await Promise.all([
+      db().from("players").select("steam_id", { head: true, count: "exact" }).limit(1),
+      db().from("character_runs").select("steam_id", { head: true, count: "exact" }).limit(1),
+    ]);
+    const err = first.error ?? newest.error;
+    if (!err) { databaseOk = true; return null; }
+    const text = `${err.code ?? ""} ${err.message ?? ""}`;
+    if (/PGRST301|PGRST302|401|403|JWT|Invalid API key|permission denied/i.test(text)) return "bad_key";
+    if (/PGRST205|42P01|does not exist|Could not find the table/i.test(text)) return first.error ? "missing_tables" : "outdated_tables";
+    if (/fetch failed|ENOTFOUND|ECONNREFUSED|timeout/i.test(text)) return "unreachable";
+    console.error("Database check failed", err);
+    return "unreachable";
+  } catch (e) {
+    console.error("Database check failed", e);
+    return "unreachable";
+  }
+}
+
 function check<T>(res: { data: T; error: { message: string } | null }): T {
   if (res.error) throw new Error(`Database error: ${res.error.message}`);
   return res.data;

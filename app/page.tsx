@@ -1,12 +1,12 @@
 import { after } from "next/server";
 import { ModList } from "@/components/ModList";
 import { listMods } from "@/lib/data";
-import { missingEnv } from "@/lib/env";
+import { siteNotReady } from "@/lib/ready";
 import { refreshStaleMods } from "@/lib/refresh";
 import { getSession } from "@/lib/session";
 
 export default async function Home({ searchParams }: { searchParams: Promise<{ signin?: string }> }) {
-  if (missingEnv().length) return null;
+  if (await siteNotReady()) return null;
   const [{ signin }, session] = await Promise.all([searchParams, getSession()]);
   const mods = await listMods(session?.steamId ?? null);
   after(() => refreshStaleMods(50).catch((e) => console.error("Workshop refresh failed", e)));
