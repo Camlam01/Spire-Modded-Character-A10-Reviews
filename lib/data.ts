@@ -32,7 +32,8 @@ export async function databaseProblem(): Promise<DatabaseProblem | null> {
   try {
     results = await Promise.all(
       DB_OBJECTS.map(async (object) => {
-        const { error } = await db().from(object).select("*", { head: true }).limit(1);
+        // A normal read, not a HEAD request: supabase-js reports a missing table on a HEAD request as success.
+        const { error } = await db().from(object).select("*").limit(1);
         return { object, message: error ? `${error.code ? `${error.code}: ` : ""}${error.message || "unknown error"}` : null };
       }),
     );
