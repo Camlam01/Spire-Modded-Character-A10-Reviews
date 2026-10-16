@@ -26,7 +26,9 @@ export interface ModSummary {
   creatorName: string | null;
   createdAt: string;
   workshopUpdatedAt: string | null;
+  workshopCreatedAt: string | null;
   subscriptions: number | null;
+  characterIds: string[];
   reviewCount: number;
   stats: MetricStats;
   reviewedByMe: boolean;
@@ -43,14 +45,25 @@ export interface ReviewView extends Author {
   id: string;
   ownsGame: boolean | null;
   playtimeMinutes: number | null;
-  a10Runs: number | null;
   notes: string;
   scores: Scores;
   metricNotes: MetricNotes;
   helpful: number;
   votedByMe: boolean;
+  verified: RunStats | null;
   createdAt: string;
   updatedAt: string;
+}
+
+/** Verified A10 runs (wins and losses alike; which is never stored). */
+export interface RunStats {
+  a10Runs: number;
+  lastPlayed: string;
+}
+
+export interface CharacterRuns extends RunStats {
+  characterId: string;
+  mods: { id: string; title: string }[];
 }
 
 export interface CommentView extends Author {
@@ -69,7 +82,9 @@ interface ModRow {
   creator_name: string | null;
   created_at: string;
   workshop_updated_at: string | null;
+  workshop_created_at: string | null;
   subscriptions: number | null;
+  character_ids: string[] | null;
   reviews: { count: number }[];
 }
 interface StatRow { mod_id: string; metric: string; avg_score: number | string; n: number }
@@ -94,7 +109,9 @@ const toSummary = (m: ModRow, stats: Map<string, MetricStats>, mine: Set<string>
   creatorName: m.creator_name,
   createdAt: m.created_at,
   workshopUpdatedAt: m.workshop_updated_at,
+  workshopCreatedAt: m.workshop_created_at,
   subscriptions: m.subscriptions,
+  characterIds: m.character_ids ?? [],
   reviewCount: m.reviews?.[0]?.count ?? 0,
   stats: stats.get(m.id) ?? {},
   reviewedByMe: mine.has(m.id),
@@ -108,7 +125,7 @@ const toAuthor = (steamId: string, p: PlayerRow | null): Author => ({
 });
 
 const MOD_COLUMNS =
-  "id, workshop_id, title, description, preview_url, creator_name, created_at, workshop_updated_at, subscriptions, reviews(count)";
+  "id, workshop_id, title, description, preview_url, creator_name, created_at, workshop_updated_at, workshop_created_at, subscriptions, character_ids, reviews(count)";
 
 async function myReviewedModIds(steamId: string | null): Promise<Set<string>> {
   if (!steamId) return new Set();
@@ -146,7 +163,7 @@ export async function findModByWorkshopId(workshopId: string): Promise<string | 
 
 export async function insertMod(m: {
   workshopId: string; title: string; description: string; previewUrl: string | null; creatorSteamId: string | null;
-  creatorName: string | null; addedBy: string; workshopUpdatedAt: string | null; subscriptions: number | null;
+  creatorName: string | null; addedBy: string; workshopUpdatedAt: string | null; workshopCreatedAt: string | null; subscriptions: number | null;
 }): Promise<string> {
   const row = check(
     await db()
@@ -160,6 +177,7 @@ export async function insertMod(m: {
         creator_name: m.creatorName,
         added_by: m.addedBy,
         workshop_updated_at: m.workshopUpdatedAt,
+        workshop_created_at: m.workshopCreatedAt,
         subscriptions: m.subscriptions,
       })
       .select("id")
@@ -182,7 +200,7 @@ export async function staleMods(limit: number, onlyId?: string) {
 
 export async function updateModFromWorkshop(id: string, fields: {
   title?: string; description?: string; previewUrl?: string | null; creatorName?: string | null;
-  workshopUpdatedAt?: string | null; subscriptions?: number | null;
+  workshopUpdatedAt?: string | null; workshopCreatedAt?: string | null; subscriptions?: number | null;
 }) {
   const patch: Record<string, unknown> = { synced_at: new Date().toISOString() };
   if (fields.title !== undefined) patch.title = fields.title;
@@ -191,20 +209,22 @@ export async function updateModFromWorkshop(id: string, fields: {
   if (fields.creatorName) patch.creator_name = fields.creatorName;
   if (fields.workshopUpdatedAt !== undefined) patch.workshop_updated_at = fields.workshopUpdatedAt;
   if (fields.subscriptions !== undefined) patch.subscriptions = fields.subscriptions;
+  if (fields.workshopCreatedAt) patch.workshop_created_at = fields.workshopCreatedAt;
   check(await db().from("mods").update(patch).eq("id", id));
 }
 
 /* ---------- reviews ---------- */
 
 export async function getReviews(modId: string, viewer: string | null): Promise<ReviewView[]> {
+  const verified = await getRunStatsForMod(modId);
   const rows = check(
     await db()
       .from("reviews")
-      .select("id, steam_id, a10_runs, notes, scores, metric_notes, created_at, updated_at, players(persona_name, avatar_url, profile_url, owns_game, playtime_minutes), review_votes(steam_id)")
+      .select("id, steam_id, notes, scores, metric_notes, created_at, updated_at, players(persona_name, avatar_url, profile_url, owns_game, playtime_minutes), review_votes(steam_id)")
       .eq("mod_id", modId)
       .order("updated_at", { ascending: false }),
   ) as unknown as {
-    id: string; steam_id: string; a10_runs: number | null; notes: string; scores: unknown; metric_notes: unknown;
+    id: string; steam_id: string; notes: string; scores: unknown; metric_notes: unknown;
     created_at: string; updated_at: string;
     players: (PlayerRow & { owns_game: boolean | null; playtime_minutes: number | null }) | null;
     review_votes: { steam_id: string }[];
@@ -214,12 +234,12 @@ export async function getReviews(modId: string, viewer: string | null): Promise<
     ...toAuthor(r.steam_id, r.players),
     ownsGame: r.players?.owns_game ?? null,
     playtimeMinutes: r.players?.playtime_minutes ?? null,
-    a10Runs: r.a10_runs,
     notes: r.notes,
     scores: cleanScores(r.scores),
     metricNotes: cleanMetricNotes(r.metric_notes),
     helpful: r.review_votes?.length ?? 0,
     votedByMe: !!viewer && (r.review_votes ?? []).some((v) => v.steam_id === viewer),
+    verified: verified.get(r.steam_id) ?? null,
     createdAt: r.created_at,
     updatedAt: r.updated_at,
   }));
@@ -227,8 +247,8 @@ export async function getReviews(modId: string, viewer: string | null): Promise<
 
 export async function getMyReview(modId: string, steamId: string) {
   return check(
-    await db().from("reviews").select("id, a10_runs, notes, scores, metric_notes").eq("mod_id", modId).eq("steam_id", steamId).maybeSingle(),
-  ) as { id: string; a10_runs: number | null; notes: string; scores: unknown; metric_notes: unknown } | null;
+    await db().from("reviews").select("id, notes, scores, metric_notes").eq("mod_id", modId).eq("steam_id", steamId).maybeSingle(),
+  ) as { id: string; notes: string; scores: unknown; metric_notes: unknown } | null;
 }
 
 export async function getReviewMeta(reviewId: string) {
@@ -238,13 +258,13 @@ export async function getReviewMeta(reviewId: string) {
 }
 
 export async function upsertReview(r: {
-  modId: string; steamId: string; a10Runs: number | null; notes: string; scores: Scores; metricNotes: MetricNotes;
+  modId: string; steamId: string; notes: string; scores: Scores; metricNotes: MetricNotes;
 }) {
   check(
     await db()
       .from("reviews")
       .upsert(
-        { mod_id: r.modId, steam_id: r.steamId, a10_runs: r.a10Runs, notes: r.notes, scores: r.scores, metric_notes: r.metricNotes },
+        { mod_id: r.modId, steam_id: r.steamId, notes: r.notes, scores: r.scores, metric_notes: r.metricNotes },
         { onConflict: "mod_id,steam_id" },
       ),
   );
@@ -268,6 +288,109 @@ export async function toggleVote(reviewId: string, steamId: string): Promise<boo
   const res = await db().from("review_votes").insert({ review_id: reviewId, steam_id: steamId });
   if (res.error && res.error.code !== "23505") throw new Error(`Database error: ${res.error.message}`); // 23505: double click
   return true;
+}
+
+/* ---------- verified runs ---------- */
+
+interface RunStatRow { steam_id: string; a10_runs: number; last_played: string }
+const toRunStats = (r: RunStatRow): RunStats => ({ a10Runs: r.a10_runs, lastPlayed: r.last_played });
+
+export async function getRunStatsForMod(modId: string): Promise<Map<string, RunStats>> {
+  const rows = check(
+    await db().from("player_mod_run_stats").select("steam_id, a10_runs, last_played").eq("mod_id", modId),
+  ) as RunStatRow[];
+  return new Map(rows.map((r) => [r.steam_id, toRunStats(r)]));
+}
+
+export async function getRunStats(steamId: string, modId: string): Promise<RunStats | null> {
+  const row = check(
+    await db().from("player_mod_run_stats").select("steam_id, a10_runs, last_played").eq("mod_id", modId).eq("steam_id", steamId).maybeSingle(),
+  ) as RunStatRow | null;
+  return row ? toRunStats(row) : null;
+}
+
+/** Every character a player has verified A10 runs with, and which listed mods add it. */
+export async function getCharacterRuns(steamId: string): Promise<CharacterRuns[]> {
+  const [rows, mods] = await Promise.all([
+    db().from("player_character_runs").select("character_id, a10_runs, last_played").eq("steam_id", steamId).order("a10_runs", { ascending: false }),
+    db().from("mods").select("id, title, character_ids").neq("character_ids", "{}"),
+  ]);
+  const modRows = check(mods) as { id: string; title: string; character_ids: string[] }[];
+  return (check(rows) as { character_id: string; a10_runs: number; last_played: string }[]).map((r) => ({
+    characterId: r.character_id,
+    a10Runs: r.a10_runs,
+    lastPlayed: r.last_played,
+    mods: modRows.filter((m) => m.character_ids.includes(r.character_id)).map((m) => ({ id: m.id, title: m.title })),
+  }));
+}
+
+export async function getPlayerProfile(steamId: string) {
+  return check(
+    await db().from("players").select("steam_id, persona_name, avatar_url, profile_url, runs_scanned_at, created_at").eq("steam_id", steamId).maybeSingle(),
+  ) as { steam_id: string; persona_name: string; avatar_url: string | null; profile_url: string | null; runs_scanned_at: string | null; created_at: string } | null;
+}
+
+export async function getPlayerReviews(steamId: string) {
+  return check(
+    await db().from("reviews").select("id, scores, updated_at, mods(id, title)").eq("steam_id", steamId).order("updated_at", { ascending: false }),
+  ) as unknown as { id: string; scores: unknown; updated_at: string; mods: { id: string; title: string } | null }[];
+}
+
+export async function markRunsScanned(steamId: string) {
+  check(await db().from("players").update({ runs_scanned_at: new Date().toISOString() }).eq("steam_id", steamId));
+}
+
+export async function setModCharacterIds(modId: string, ids: string[]) {
+  check(await db().from("mods").update({ character_ids: ids }).eq("id", modId));
+}
+
+/** Character ids already linked to some mod. */
+export async function linkedCharacterIds(): Promise<Set<string>> {
+  const rows = check(await db().from("mods").select("character_ids").neq("character_ids", "{}")) as { character_ids: string[] }[];
+  return new Set(rows.flatMap((r) => r.character_ids));
+}
+
+export async function unlinkedMods() {
+  return check(await db().from("mods").select("id, title").eq("character_ids", "{}")) as { id: string; title: string }[];
+}
+
+export async function knownCharacterIds(): Promise<string[]> {
+  const rows = check(await db().from("known_characters").select("character_id")) as { character_id: string }[];
+  return rows.map((r) => r.character_id);
+}
+
+/** Runs (seed + start time) another account has already verified. A solo run belongs to one player only. */
+export async function runsClaimedByOthers(steamId: string, runs: { seed: string; startTime: number }[]): Promise<Set<string>> {
+  const claimed = new Set<string>();
+  const seeds = [...new Set(runs.map((r) => r.seed))];
+  for (let i = 0; i < seeds.length; i += 150) {
+    const rows = check(
+      await db().from("verified_runs").select("seed, start_time").in("seed", seeds.slice(i, i + 150)).neq("steam_id", steamId),
+    ) as { seed: string; start_time: string }[];
+    for (const r of rows) claimed.add(`${r.seed}:${Math.round(new Date(r.start_time).getTime() / 1000)}`);
+  }
+  return claimed;
+}
+
+export async function insertVerifiedRuns(steamId: string, runs: {
+  characterId: string; seed: string; startTime: number; ascension: number; runTime: number; buildId: string;
+}[]) {
+  for (let i = 0; i < runs.length; i += 500) {
+    check(
+      await db().from("verified_runs").upsert(
+        runs.slice(i, i + 500).map((r) => ({
+          steam_id: steamId,
+          character_id: r.characterId,
+          seed: r.seed,
+          start_time: new Date(r.startTime * 1000).toISOString(),
+          ascension: r.ascension,
+          run_time: r.runTime,
+          build_id: r.buildId,
+        })),
+        { onConflict: "steam_id,seed,start_time", ignoreDuplicates: true },
+      ),
+    );
+  }
 }
 
 /* ---------- comments ---------- */

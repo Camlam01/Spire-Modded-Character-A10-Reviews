@@ -10,6 +10,8 @@ import { catStyle, Medal } from "./Medal";
 import { useMetrics } from "./MetricsProvider";
 import { ConfirmAction } from "./ConfirmAction";
 import { CommentThread, HelpfulButton } from "./Discussion";
+import { CharacterIdsForm } from "./CharacterLink";
+import { characterName } from "@/lib/runs";
 
 interface Props {
   mod: ModSummary;
@@ -39,6 +41,7 @@ export function ModDetail({ mod, reviews, comments, viewerId, admin }: Props) {
   const writeLink = viewerId
     ? <Link className="btn primary" href={reviewHref}>{mine ? "Edit your review" : "Write a review"}</Link>
     : <a className="btn steam" href={`/api/auth/steam/login?next=${encodeURIComponent(reviewHref)}`}>Sign in with Steam to review</a>;
+  const verifyLink = viewerId ? <Link className="btn" href="/profile">Your runs</Link> : null;
 
   const commentsByReview = useMemo(() => {
     const m = new Map<string, CommentView[]>();
@@ -77,11 +80,18 @@ export function ModDetail({ mod, reviews, comments, viewerId, admin }: Props) {
             {[mod.workshopUpdatedAt ? `Workshop updated ${new Date(mod.workshopUpdatedAt).toLocaleDateString(undefined, { dateStyle: "medium" })}` : null,
               mod.subscriptions != null ? `${mod.subscriptions.toLocaleString()} subscribers` : null].filter(Boolean).join(" · ")}
           </div>
+          <div className="meta">
+            {mod.characterIds.length
+              ? <>Character: {[...new Set(mod.characterIds.map(characterName))].join(" / ")}</>
+              : "Not linked to a character yet. It links when a reviewer’s runs match it."}
+          </div>
           {mod.description ? <p className="desc">{mod.description.length > 300 ? mod.description.slice(0, 300) + "…" : mod.description}</p> : null}
           <div className="actions">
             {writeLink}
+            {verifyLink}
             <a className="btn" href={workshopUrl} target="_blank" rel="noopener noreferrer">Steam Workshop page ↗</a>
             <Link className="btn" href={`/compare?ids=${mod.id}`}>Compare</Link>
+            {admin ? <CharacterIdsForm modId={mod.id} characterIds={mod.characterIds} /> : null}
             {admin ? <ConfirmAction label="Remove mod" prompt={`Remove ${mod.title} and all its reviews?`} action={deleteModAction} fields={{ modId: mod.id }} /> : null}
           </div>
         </div>
@@ -181,13 +191,18 @@ function ReviewCard({ r, modId, viewerId, admin, signInHref, comments }: {
         <div className="who">
           {r.avatarUrl ? <img src={r.avatarUrl} alt="" /> : null}
           <div>
-            <strong>{r.profileUrl ? <a href={r.profileUrl} target="_blank" rel="noopener noreferrer">{r.personaName}</a> : r.personaName}</strong>
+            <strong><Link href={`/players/${r.steamId}`}>{r.personaName}</Link></strong>
             {mine ? <span className="tag">You</span> : null}
             <div className="by num">
-              {[r.a10Runs != null ? `${r.a10Runs} A10 ${r.a10Runs === 1 ? "run" : "runs"}` : null, `${n} metrics counted`, new Date(r.updatedAt).toLocaleDateString()].filter(Boolean).join(" · ")}
+              {[`${n} metrics counted`, new Date(r.updatedAt).toLocaleDateString()].join(" · ")}
             </div>
           </div>
         </div>
+        {r.verified ? (
+          <span className="badge verified num" title={`Verified from run history files. Most recent ${new Date(r.verified.lastPlayed).toLocaleDateString()}.`}>
+            ✓ {r.verified.a10Runs} A10 {r.verified.a10Runs === 1 ? "run" : "runs"}
+          </span>
+        ) : <span className="badge" title="This reviewer hasn’t verified any runs with this character">Unverified</span>}
         {r.ownsGame ? <span className="badge ok">Owns STS2{hours != null ? ` · ${hours}h played` : ""}</span>
           : r.ownsGame === null ? <span className="badge">Game list private</span> : null}
         {mine ? (

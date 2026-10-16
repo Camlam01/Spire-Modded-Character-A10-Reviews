@@ -29,6 +29,7 @@ export async function refreshStaleMods(limit = 50, onlyId?: string): Promise<voi
       previewUrl: it.previewUrl,
       creatorName: (it.creatorSteamId && creators.get(it.creatorSteamId)?.personaName) || null,
       workshopUpdatedAt: it.updatedAt,
+      workshopCreatedAt: it.createdAt,
       subscriptions: it.subscriptions,
     });
   }

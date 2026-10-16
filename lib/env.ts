@@ -32,6 +32,11 @@ export const env = {
     const v = process.env.REVIEW_OWNERSHIP;
     return v === "anyone" || v === "verified" ? v : "owners";
   },
+  /** Verified solo runs with a mod's character needed before a player can review it. 0 makes verification optional. */
+  get reviewMinRuns(): number {
+    const n = Number(process.env.REVIEW_MIN_RUNS ?? 3);
+    return Number.isInteger(n) && n >= 0 ? n : 3;
+  },
   get adminIds(): Set<string> {
     return new Set((process.env.ADMIN_STEAM_IDS || "").split(",").map((s) => s.trim()).filter(Boolean));
   },

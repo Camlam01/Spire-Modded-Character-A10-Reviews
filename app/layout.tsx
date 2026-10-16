@@ -36,8 +36,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               <span className="spacer" />
               {missing.length ? null : session ? (
                 <div className="me">
-                  {player?.avatar_url ? <img src={player.avatar_url} alt="" /> : null}
-                  <span>{player?.persona_name || "Signed in"}</span>
+                  <Link className="me-link" href="/profile">
+                    {player?.avatar_url ? <img src={player.avatar_url} alt="" /> : null}
+                    <span>{player?.persona_name || "Your profile"}</span>
+                  </Link>
                   <form action={signOutAction}><button type="submit" className="linkish">Sign out</button></form>
                 </div>
               ) : (

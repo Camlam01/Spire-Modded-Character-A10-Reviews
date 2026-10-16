@@ -255,3 +255,34 @@ details.discussion:not(.inline) { background: var(--surface); border: 1px solid 
 .ctable tr.total td { font-weight: 700; font-size: 1.05rem; border-bottom: 0; }
 .ctable .medal-cell { display: flex; justify-content: flex-end; }
 .card-compare { justify-self: start; font-size: .85rem; }
+
+/* Run verification */
+.steps { display: grid; gap: 10px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 16px; }
+.steps h3 { font-size: 1.15rem; }
+.steps p { margin: 0; max-width: 70ch; }
+.steps code { background: var(--raised); border: 1px solid var(--line); border-radius: 4px; padding: 0 5px; overflow-wrap: anywhere; }
+.path { margin: 0; padding: 10px 12px; background: var(--raised); border: 1px solid var(--line); border-radius: 8px; overflow-x: auto; font-size: .95rem; user-select: all; }
+.dropzone { border: 2px dashed var(--line); border-radius: var(--r); padding: 18px; display: grid; gap: 10px; justify-items: start; background: var(--raised); }
+.dropzone.over { border-color: var(--accent); background: var(--accent-soft); }
+.dropzone label.btn { cursor: pointer; }
+.choices { border: 0; padding: 0; margin: 0; display: grid; gap: 8px; min-width: 0; }
+.choices legend { font-weight: 700; margin-bottom: 6px; }
+.choice { display: flex; gap: 10px; align-items: baseline; border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; cursor: pointer; background: var(--raised); }
+.choice:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); }
+.admin-box { border-style: dashed; }
+.badge.verified { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 50%, var(--line)); font-weight: 700; }
+
+/* Profiles */
+.me-link { display: flex; align-items: center; gap: 10px; color: inherit; text-decoration: none; }
+.me-link:hover span { text-decoration: underline; }
+.avatar-lg { width: 96px; height: 96px; border-radius: 10px; }
+.profile-head h2 { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.ctable.chars td:nth-child(2) { text-align: left; white-space: normal; }
+.ctable.chars th:nth-child(2) { text-align: left; }
+.steps-inner { display: grid; gap: 10px; margin-top: 10px; }
+.scan > details > summary { cursor: pointer; color: var(--accent); }
+.scan-result p { margin: 0; }
+.admin-box { font-size: .9rem; }
+.admin-box > summary { cursor: pointer; color: var(--muted); }
+.review-head strong a { color: inherit; text-decoration: none; }
+.review-head strong a:hover { text-decoration: underline; }

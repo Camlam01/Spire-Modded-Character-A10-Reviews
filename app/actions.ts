@@ -4,15 +4,19 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { clearSession, getSession, isAdmin } from "@/lib/session";
 import { env } from "@/lib/env";
-import { COMMENT_MAX, RATE_LIMITS } from "@/lib/limits";
+import { z } from "zod";
+import { COMMENT_MAX, MAX_RUNS_PER_UPLOAD, RATE_LIMITS } from "@/lib/limits";
+import { characterName, isModdedCharacter, RUN_SUMMARY } from "@/lib/runs";
+import { autoLinkMods } from "@/lib/linking";
 import { getPlayerSummaries, getSts2Ownership, getWorkshopItem, parseWorkshopId } from "@/lib/steam";
 import {
-  deleteComment, deleteMod, deleteReview, findModByWorkshopId, getMod, getPlayer, getReviewMeta, insertComment, insertMod,
-  isUuid, takeRateToken, toggleVote, updateOwnership, upsertReview,
+  deleteComment, deleteMod, deleteReview, findModByWorkshopId, getCharacterRuns, getMod, getPlayer, getReviewMeta, getRunStats,
+  insertComment, insertMod, insertVerifiedRuns, isUuid, linkedCharacterIds, markRunsScanned, runsClaimedByOthers,
+  setModCharacterIds, takeRateToken, toggleVote, updateOwnership, upsertReview,
 } from "@/lib/data";
 import { cleanMetricNotes, cleanScores } from "@/lib/scoring";
 
-export type FormState = { error?: string; ok?: number } | null;
+export type FormState = { error?: string; ok?: number; message?: string } | null;
 
 const revalidateMod = (modId: string) => {
   revalidatePath("/");
@@ -43,6 +47,9 @@ export async function addModAction(_prev: FormState, form: FormData): Promise<Fo
     if (lookup.reason === "not_found") return { error: "Steam couldn’t find that Workshop item. It may be private, hidden or removed." };
     return { error: "Steam didn’t respond. Try again in a minute." };
   }
+  if (!lookup.item.tags.includes("Characters")) {
+    return { error: "That Workshop item isn’t tagged as a character mod. This site only reviews character mods; if it adds a character, ask its author to add the Characters tag on the Workshop." };
+  }
   if (!(await takeRateToken(session.steamId, "mod"))) return { error: RATE_LIMITS.mod.message };
 
   const { item } = lookup;
@@ -59,6 +66,7 @@ export async function addModAction(_prev: FormState, form: FormData): Promise<Fo
       creatorName: creator?.personaName || null,
       addedBy: session.steamId,
       workshopUpdatedAt: item.updatedAt,
+      workshopCreatedAt: item.createdAt,
       subscriptions: item.subscriptions,
     });
   } catch (e) {
@@ -67,6 +75,7 @@ export async function addModAction(_prev: FormState, form: FormData): Promise<Fo
     if (raced) redirect(`/mods/${raced}`);
     throw e;
   }
+  await autoLinkMods();
   revalidatePath("/");
   redirect(`/mods/${modId}`);
 }
@@ -114,19 +123,17 @@ export async function saveReviewAction(_prev: FormState, form: FormData): Promis
   // A note only makes sense next to a score.
   const metricNotes = Object.fromEntries(Object.entries(cleanMetricNotes(parsedNotes)).filter(([id]) => id in scores));
 
-  const runsRaw = String(form.get("a10Runs") ?? "").trim();
-  let a10Runs: number | null = null;
-  if (runsRaw) {
-    a10Runs = Number(runsRaw);
-    if (!Number.isInteger(a10Runs) || a10Runs < 0 || a10Runs > 100000) return { error: "A10 runs played should be a whole number." };
-  }
   const notes = String(form.get("notes") ?? "").trim().slice(0, 4000);
 
+  const needed = env.reviewMinRuns;
+  if (needed > 0 && ((await getRunStats(session.steamId, modId))?.a10Runs ?? 0) < needed) {
+    return { error: `You need at least ${needed} verified A10 ${needed === 1 ? "run" : "runs"} with this character to review it. Scan your runs from your profile.` };
+  }
   const blocked = await ownershipProblem(session.steamId);
   if (blocked) return { error: blocked };
   if (!(await takeRateToken(session.steamId, "review"))) return { error: RATE_LIMITS.review.message };
 
-  await upsertReview({ modId, steamId: session.steamId, a10Runs, notes, scores, metricNotes });
+  await upsertReview({ modId, steamId: session.steamId, notes, scores, metricNotes });
   revalidateMod(modId);
   redirect(`/mods/${modId}`);
 }
@@ -151,6 +158,85 @@ export async function voteAction(_prev: FormState, form: FormData): Promise<Form
   await toggleVote(review.id, session.steamId);
   revalidatePath(`/mods/${review.mod_id}`);
   return { ok: Date.now() };
+}
+
+/* ---------- verified runs ---------- */
+
+const SCAN = z.object({ runs: z.array(RUN_SUMMARY).max(MAX_RUNS_PER_UPLOAD) });
+const DAY = 86400;
+
+/** Save a player's scanned A10 runs (every character), then link any mods the new characters match. */
+export async function scanRunsAction(_prev: FormState, form: FormData): Promise<FormState> {
+  const session = await getSession();
+  if (!session) return { error: "Your Steam sign-in expired. Sign in again to scan your runs." };
+
+  let raw: unknown = null;
+  try { raw = JSON.parse(String(form.get("payload") ?? "")); } catch {}
+  const parsed = SCAN.safeParse(raw);
+  if (!parsed.success) return { error: "Those runs couldn’t be read. Choose your run history folder again." };
+  if (!(await takeRateToken(session.steamId, "runs"))) return { error: RATE_LIMITS.runs.message };
+
+  // Checks the browser can't be trusted with. Runs dated before a mod was published are ignored per mod, in the database.
+  const now = Date.now() / 1000;
+  const seen = new Set<string>();
+  let future = 0;
+  const candidates = parsed.data.runs.filter((r) => {
+    const k = `${r.seed}:${r.startTime}`;
+    if (seen.has(k)) return false;
+    seen.add(k);
+    if (r.startTime > now + DAY) { future++; return false; }
+    return true;
+  });
+  const claimed = await runsClaimedByOthers(session.steamId, candidates);
+  const accepted = candidates.filter((r) => !claimed.has(`${r.seed}:${r.startTime}`));
+  if (accepted.length) await insertVerifiedRuns(session.steamId, accepted);
+  await markRunsScanned(session.steamId);
+  await autoLinkMods();
+
+  const skipped = [
+    candidates.length - accepted.length && `${candidates.length - accepted.length} already verified by another account`,
+    future && `${future} dated in the future`,
+  ].filter(Boolean);
+  revalidatePath("/", "layout");
+  return {
+    ok: Date.now(),
+    message: `Scanned ${accepted.length} A10 ${accepted.length === 1 ? "run" : "runs"}. Runs you’d already verified are kept.${skipped.length ? ` Not counted: ${skipped.join(", ")}.` : ""}`,
+  };
+}
+
+/**
+ * When a mod's Workshop title didn't match any character, the first reviewer says which of their characters it adds.
+ * They must have verified A10 runs with it, and it can't already belong to another mod. Admins can correct it later.
+ */
+export async function linkCharacterAction(_prev: FormState, form: FormData): Promise<FormState> {
+  const session = await getSession();
+  if (!session) return { error: "Your Steam sign-in expired. Sign in again." };
+  const modId = String(form.get("modId") ?? "");
+  const characterId = String(form.get("characterId") ?? "");
+  const mod = isUuid(modId) ? await getMod(modId, null) : null;
+  if (!mod) return { error: "This mod isn’t listed any more." };
+  if (mod.characterIds.length) return { ok: Date.now() }; // someone linked it a moment ago
+  if (!isModdedCharacter(characterId)) return { error: "Pick the character this mod adds." };
+  const mine = await getCharacterRuns(session.steamId);
+  if (!mine.some((c) => c.characterId === characterId)) return { error: "You haven’t verified any A10 runs with that character." };
+  if ((await linkedCharacterIds()).has(characterId)) return { error: `${characterName(characterId)} already belongs to another mod.` };
+  await setModCharacterIds(modId, [characterId]);
+  revalidateMod(modId);
+  return { ok: Date.now() };
+}
+
+/** Admins: set which in-game character ids belong to a mod (comma-separated). */
+export async function setCharacterIdsAction(_prev: FormState, form: FormData): Promise<FormState> {
+  const session = await getSession();
+  const modId = String(form.get("modId") ?? "");
+  if (!isAdmin(session) || !isUuid(modId)) return { error: "Only admins can change this." };
+  const ids = [...new Set(String(form.get("characterIds") ?? "").split(/[\s,]+/).map((s) => s.trim()).filter(Boolean))];
+  const bad = ids.filter((id) => !RUN_SUMMARY.shape.characterId.safeParse(id).success);
+  if (bad.length) return { error: `Not a character id: ${bad.join(", ")}. They look like CHARACTER.MODNAME-CHARACTER_NAME.` };
+  await setModCharacterIds(modId, ids);
+  if (!ids.length) await autoLinkMods();
+  revalidateMod(modId);
+  return { ok: Date.now(), message: ids.length ? "Saved." : "Cleared. The site will try to link it again by name." };
 }
 
 /* ---------- comments ---------- */

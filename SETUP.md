@@ -13,13 +13,15 @@ A Next.js site where Slay the Spire 2 players sign in with Steam and review Work
 - Players can mark other players' reviews as helpful, and reviews can be sorted by most helpful, newest, or score.
 - The compare page puts up to three mods side by side, metric by metric.
 - Mod details are re-read from the Workshop in the background once a day, including the Workshop update date and subscriber count.
+- **Run verification:** each player scans their STS2 run history once, from their profile. The browser reads the `.run` files and sends only finished solo A10 runs (character, Ascension, seed, start time, length, game version; never win or loss). Profiles list every character played with its A10 run count, and reviews show a badge such as "✓ 23 A10 runs" for the mod's character. `REVIEW_MIN_RUNS` (default 3) sets how many verified A10 runs a player needs before reviewing. No public Steam profile is needed. Chrome and Edge remember the folder, so rescanning is one click.
+- **Character linking:** mods are linked to their in-game character automatically by matching the Workshop title to the character's mod prefix (for example "The Tailor (Beta Branch)" → `CHARACTER.THETAILOR-THE_TAILOR`). When the title doesn't match, the first reviewer picks the character from their runs. Admins can correct links on the mod page. Only Workshop items tagged "Characters" can be added.
 - Spam protection: every write is rate-limited per player (`lib/limits.ts`), and `REVIEW_OWNERSHIP` decides whether players must own STS2 to review.
 - Admins (set in `ADMIN_STEAM_IDS`) can remove any mod, review or comment.
 
 ## 1. Create the database (Supabase)
 
 1. Make a free project at https://supabase.com.
-2. Open **SQL Editor** and run each file in `supabase/migrations/` in order: `0001_init.sql`, then `0002_discussion_votes_limits.sql`. If you already ran the first one, just run the second.
+2. Open **SQL Editor** and run each file in `supabase/migrations/` in order: `0001_init.sql`, `0002_discussion_votes_limits.sql`, then `0003_verified_runs.sql`. Skip any you've already run.
 3. In **Project Settings → API**, copy the **Project URL** and the **service_role** secret key.
 
 ## 2. Get a Steam Web API key
@@ -75,6 +77,8 @@ npm run build
 | `lib/steam.ts` | Steam sign-in check, player profiles, STS2 ownership and Workshop lookups. |
 | `lib/session.ts` | The signed login cookie. |
 | `lib/data.ts` | Every database query. |
+| `lib/runs.ts` | Reads STS2 run history files in the browser and matches mod titles to characters. Tested in `lib/runs.test.ts`. |
+| `lib/linking.ts` | Links mods to characters automatically. |
 | `lib/limits.ts` | Rate limits for adding mods, saving reviews, commenting and voting. |
 | `lib/refresh.ts` | Re-reads stale mods from the Workshop. |
 | `app/actions.ts` | Every write: mods, reviews, votes, comments, signing out. |
@@ -84,6 +88,11 @@ npm run build
 | `prototype/` | The original single-page prototype. |
 
 ## Known gaps
+
+- Run verification is strong evidence, not proof. Run files are plain text, so a determined player could fake them. The site rejects runs another account has already verified, runs dated in the future, and files whose name doesn't match the run inside, and a mod only counts runs dated after it was published.
+- Co-op runs aren't counted, because the files don't reliably say which player you were.
+- When a mod's title doesn't match its character, the first reviewer chooses the character. Admins can correct it from the mod page.
+- Run history locations on Mac and Linux are educated guesses until someone confirms them.
 
 - Players with a private game list can't be checked for ownership. With `REVIEW_OWNERSHIP=owners` they can still review and show a "Game list private" badge; switch to `verified` to require a public game list.
 - Comments are a flat list per thread, with no replies or editing (players can delete and repost).

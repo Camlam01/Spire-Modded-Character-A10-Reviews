@@ -116,7 +116,9 @@ export interface WorkshopItem {
   creatorSteamId: string | null;
   appId: string;
   updatedAt: string | null;
+  createdAt: string | null;
   subscriptions: number | null;
+  tags: string[];
 }
 
 export type WorkshopLookup =
@@ -147,6 +149,7 @@ export async function getWorkshopItems(workshopIds: string[]): Promise<Map<strin
     const appId = String(d.consumer_app_id ?? d.creator_app_id ?? "");
     if (appId !== env.sts2AppId) { out.set(id, { ok: false, reason: "wrong_game" }); continue; }
     const updated = Number(d.time_updated);
+    const created = Number(d.time_created);
     const subs = Number(d.subscriptions);
     out.set(id, {
       ok: true,
@@ -158,7 +161,9 @@ export async function getWorkshopItems(workshopIds: string[]): Promise<Map<strin
         creatorSteamId: /^\d{17}$/.test(String(d.creator ?? "")) ? String(d.creator) : null,
         appId,
         updatedAt: Number.isFinite(updated) && updated > 0 ? new Date(updated * 1000).toISOString() : null,
+        createdAt: Number.isFinite(created) && created > 0 ? new Date(created * 1000).toISOString() : null,
         subscriptions: Number.isFinite(subs) ? subs : null,
+        tags: Array.isArray(d.tags) ? (d.tags as { tag?: unknown }[]).map((t) => String(t.tag ?? "")).filter(Boolean) : [],
       },
     });
   }

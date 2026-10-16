@@ -5,20 +5,21 @@ import { useActionState, useState } from "react";
 import { CATEGORIES, METRICS } from "@/lib/metrics";
 import { formatScore, isScore, METRIC_NOTE_MAX, reviewTotal, type MetricNotes, type Scores } from "@/lib/scoring";
 import { saveReviewAction } from "@/app/actions";
+import type { RunStats } from "@/lib/data";
 import { catStyle, Medal } from "./Medal";
 import { useMetrics } from "./MetricsProvider";
 
 interface Props {
   modId: string;
   modTitle: string;
-  existing: { a10Runs: number | null; notes: string; scores: Scores; metricNotes: MetricNotes } | null;
+  verified: RunStats | null;
+  existing: { notes: string; scores: Scores; metricNotes: MetricNotes } | null;
 }
 
-export function ReviewForm({ modId, modTitle, existing }: Props) {
+export function ReviewForm({ modId, modTitle, verified, existing }: Props) {
   const { enabledIds } = useMetrics();
   const [scores, setScores] = useState<Scores>(existing?.scores ?? {});
   // Controlled, so a failed save doesn't clear what the player typed (React resets uncontrolled fields after an action).
-  const [runs, setRuns] = useState(existing?.a10Runs != null ? String(existing.a10Runs) : "");
   const [notes, setNotes] = useState(existing?.notes ?? "");
   const [metricNotes, setMetricNotes] = useState<MetricNotes>(existing?.metricNotes ?? {});
   const [openNotes, setOpenNotes] = useState<Set<string>>(() => new Set(Object.keys(existing?.metricNotes ?? {})));
@@ -44,11 +45,12 @@ export function ReviewForm({ modId, modTitle, existing }: Props) {
       <input type="hidden" name="scores" value={JSON.stringify(scores)} />
       <input type="hidden" name="metricNotes" value={JSON.stringify(metricNotes)} />
 
-      <div className="field narrow">
-        <label htmlFor="a10Runs">A10 runs played</label>
-        <input id="a10Runs" name="a10Runs" type="number" min={0} max={100000} step={1} inputMode="numeric" placeholder="Optional"
-          value={runs} onChange={(e) => setRuns(e.target.value)} />
-      </div>
+      <p className="notice num">
+        {verified
+          ? <>Your review will show {verified.a10Runs} verified A10 {verified.a10Runs === 1 ? "run" : "runs"} with this character. </>
+          : <>Your review will show as unverified. </>}
+        <Link href="/profile">{verified ? "Rescan to add newer runs" : "Scan your runs"}</Link>
+      </p>
 
       {CATEGORIES.map((c) => (
         <fieldset key={c.key} className="cat" style={catStyle(c.key)}>
