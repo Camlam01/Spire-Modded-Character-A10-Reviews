@@ -13,7 +13,7 @@ test("cleanScores drops unknown metrics and bad values", () => {
 
 test("cleanMetricNotes trims, drops blanks and unknown metrics, and caps length", () => {
   const long = "x".repeat(600);
-  assert.deepEqual(cleanMetricNotes({ art: "  lovely  ", immersion: "   ", bogus: "hi", enjoyment: long, outliers: 5 }), {
+  assert.deepEqual(cleanMetricNotes({ art: "  lovely  ", immersion: "   ", bogus: "hi", enjoyment: long, snowballing: 5 }), {
     art: "lovely",
     enjoyment: "x".repeat(500),
   });
@@ -22,8 +22,8 @@ test("cleanMetricNotes trims, drops blanks and unknown metrics, and caps length"
 test("reviewTotal averages only enabled metrics that were scored", () => {
   const s = { art: 8, immersion: 6, enjoyment: 2 };
   assert.equal(reviewTotal(s, ["art", "immersion", "enjoyment"]), 16 / 3);
-  assert.equal(reviewTotal(s, ["art", "immersion", "outliers"]), 7);
-  assert.equal(reviewTotal(s, ["outliers"]), null);
+  assert.equal(reviewTotal(s, ["art", "immersion", "snowballing"]), 7);
+  assert.equal(reviewTotal(s, ["snowballing"]), null);
 });
 
 test("combined total is the mean of per-metric averages", () => {

@@ -39,8 +39,8 @@ export function ReviewForm({ modId, modTitle, verified, existing }: Props) {
     <form className="form" action={formAction}>
       <h2>{existing ? "Edit your review of " : "Review "}{modTitle}</h2>
       <p className="scale-note">
-        Score each metric from 0 to 10 in steps of 0.5, where 10 is the best a character could do on that metric. For Snowballing and
-        Outliers, a high score means the problem is well controlled. Leave a metric on “—” if you can’t judge it yet; it won’t count toward any average.
+        Score each metric from 0 to 10 in steps of 0.5, where 10 is the best a character could do on that metric. The words under
+        each slider show which end is which. Leave a metric on “—” if you can’t judge it yet; it won’t count toward any average.
       </p>
       <input type="hidden" name="modId" value={modId} />
       <input type="hidden" name="scores" value={JSON.stringify(scores)} />

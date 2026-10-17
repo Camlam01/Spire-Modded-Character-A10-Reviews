@@ -1,4 +1,5 @@
 // The review metrics. Ids are stored in the database (see supabase/migrations), so never rename one.
+// Retired metrics ("outliers") stay in old reviews but are ignored, since only the ids listed here are read.
 
 export type CategoryKey = "aes" | "mech" | "bal" | "ref";
 
@@ -43,11 +44,10 @@ export const CATEGORIES: Category[] = [
   ]),
   cat("bal", "A10 Balance", [
     ["difficulty", "Difficulty", "Does this character’s difficulty line up well with the base game characters?", YES_GOOD],
-    ["adaptability", "Adaptability", "Can this character recover runs in weaker positions, or do strong rewards feel necessary to have a good chance to win? Does this character rely on finding cards building into a specific archetype, or do they have a strong decision space where many different approaches can win?", YES_GOOD],
-    ["snowballing", "Snowballing", "Does this character have a lot of cards or card combos which solve a majority of the game’s challenges? Do your wins and losses feel inevitable well before the end of the run?", NO_GOOD],
-    ["outliers", "Outliers", "Does this character have many cards which seem obviously much weaker or stronger than others at the same rarity? IE: cards you always pick/skip regardless of scenario.", NO_GOOD],
+    ["adaptability", "Adaptability", "Does this character rely on finding cards building into a specific archetype, or do they have a strong decision space where many different approaches can win?", ["Archetype", "Many approaches"]],
+    ["snowballing", "Snowballing", "Do your wins and losses with this character feel inevitable well before the end of the run? Do particular cards feel disproportionately stronger than others?", NO_GOOD],
   ]),
-  cat("ref", "Reflection", [
+  cat("ref", "Enjoyment", [
     ["enjoyment", "Enjoyment", "Do you find yourself coming back to this character regularly?", YES_GOOD],
     ["fulfilment", "Fulfilment", "How many of your runs feel satisfying? When you lose, do you feel like you have ideas of where you made mistakes? When you win, do you feel like it is usually because you made good decisions, or found strong rewards?", STRENGTH],
   ]),
