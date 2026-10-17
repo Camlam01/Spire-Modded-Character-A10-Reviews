@@ -5,7 +5,7 @@ import { RunScan } from "@/components/RunScan";
 import { ProfileReviewTotal } from "@/components/ProfileReviewTotal";
 import { getCharacterRuns, getPlayerProfile, getPlayerReviews } from "@/lib/data";
 import { siteNotReady } from "@/lib/ready";
-import { characterName, isModdedCharacter } from "@/lib/runs";
+import { characterName, isVerified, VERIFY_RULE } from "@/lib/runs";
 import { cleanScores } from "@/lib/scoring";
 import { getSession } from "@/lib/session";
 
@@ -35,7 +35,7 @@ export default async function PlayerPage({ params }: Props) {
         <div>
           <h2>{player.persona_name || "Steam player"}{isMe ? <span className="tag">You</span> : null}</h2>
           <div className="meta num">
-            {[totalA10 ? `${totalA10} verified A10 ${totalA10 === 1 ? "run" : "runs"}` : "No verified runs yet",
+            {[totalA10 ? `${totalA10} A10 ${totalA10 === 1 ? "run" : "runs"} with modded characters` : "No runs scanned yet",
               `${reviews.length} ${reviews.length === 1 ? "review" : "reviews"}`].join(" · ")}
           </div>
           {player.profile_url ? <div className="actions"><a className="btn small" href={player.profile_url} target="_blank" rel="noopener noreferrer">Steam profile ↗</a></div> : null}
@@ -45,22 +45,23 @@ export default async function PlayerPage({ params }: Props) {
       {isMe ? <RunScan viewerId={steamId} lastScanned={player.runs_scanned_at} /> : null}
 
       <div className="section-title">
-        <h3>Characters played at A10</h3>
-        <span>Finished solo runs at Ascension 10, verified from run history files.</span>
+        <h3>Modded characters played at A10</h3>
+        <span>From run history files. Verified means {VERIFY_RULE}.</span>
       </div>
       {characters.length ? (
         <div className="table-wrap">
           <table className="ctable chars">
-            <thead><tr><th scope="col">Character</th><th scope="col">Mod</th><th scope="col">A10 runs</th></tr></thead>
+            <thead><tr><th scope="col">Character</th><th scope="col">Mod</th><th scope="col">A10 runs</th><th scope="col">Verified</th></tr></thead>
             <tbody>
               {characters.map((c) => (
                 <tr key={c.characterId}>
                   <td title={c.characterId}>{characterName(c.characterId)}</td>
                   <td>
                     {c.mods.length ? c.mods.map((m, i) => <span key={m.id}>{i ? ", " : ""}<Link href={`/mods/${m.id}`}>{m.title}</Link></span>)
-                      : isModdedCharacter(c.characterId) ? <span className="by">Not listed here yet</span> : <span className="by">Base game</span>}
+                      : <span className="by">Not listed here yet</span>}
                   </td>
                   <td className="num">{c.a10Runs}</td>
+                  <td>{isVerified(c) ? <span className="badge verified">✓ Verified</span> : <span className="by">Not yet</span>}</td>
                 </tr>
               ))}
             </tbody>

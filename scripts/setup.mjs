@@ -64,7 +64,6 @@ writeFileSync(envPath, [
   `SESSION_SECRET=${randomBytes(32).toString("base64url")}`,
   "STS2_APP_ID=2868840",
   "REVIEW_OWNERSHIP=owners",
-  "REVIEW_MIN_RUNS=3",
   `ADMIN_STEAM_IDS=${adminId}`,
   "",
 ].join("\n"));

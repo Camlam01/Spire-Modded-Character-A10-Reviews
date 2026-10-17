@@ -1,9 +1,16 @@
 // Reading STS2 run history files (saves/history/<start_time>.run). Runs in the browser, so raw files never leave the
-// player's computer. Qualifying runs (solo, standard mode, Ascension 10+, not abandoned) are counted per character, and
-// only those counts are sent: CHARACTER_COUNTS below. Individual runs, and whether they were won, are never sent.
+// player's computer. Qualifying runs (solo, standard mode, Ascension 10+, completed in full) with modded characters are
+// counted per character, and only those counts are sent: CHARACTER_COUNTS below. Individual runs are never sent.
 import { z } from "zod";
 
 export const MIN_ASCENSION = 10;
+
+/** A review is "Verified" when its author has this many A10 runs, or this many A10 wins, with the mod's character. */
+export const VERIFY_MIN_RUNS = 10;
+export const VERIFY_MIN_WINS = 3;
+export const isVerified = (s: { a10Runs: number; a10Wins: number } | null | undefined): boolean =>
+  !!s && (s.a10Runs >= VERIFY_MIN_RUNS || s.a10Wins >= VERIFY_MIN_WINS);
+export const VERIFY_RULE = `${VERIFY_MIN_RUNS} A10 runs or ${VERIFY_MIN_WINS} A10 wins with the character`;
 
 export const RUN_SUMMARY = z.object({
   characterId: z.string().regex(/^CHARACTER\.[A-Z0-9_.-]{1,120}$/),
@@ -12,16 +19,18 @@ export const RUN_SUMMARY = z.object({
   ascension: z.number().int().min(MIN_ASCENSION).max(20),
   runTime: z.number().int().min(0).max(604800),
   buildId: z.string().max(40),
+  win: z.boolean(),
 });
 export type RunSummary = z.infer<typeof RUN_SUMMARY>;
 
-/** What a scan sends: one entry per character played at A10. */
+/** What a scan sends: one entry per modded character played at A10. Wins only decide verification; they're never shown. */
 export const CHARACTER_COUNTS = z.object({
   characters: z.array(z.object({
     characterId: RUN_SUMMARY.shape.characterId,
     a10Runs: z.number().int().min(1).max(100000),
+    a10Wins: z.number().int().min(0).max(100000),
     lastPlayed: z.number().int().positive(), // unix seconds of the most recent counted run
-  })).max(500),
+  }).refine((c) => c.a10Wins <= c.a10Runs)).max(500),
 });
 export type CharacterCounts = z.infer<typeof CHARACTER_COUNTS>;
 
@@ -99,6 +108,7 @@ export function parseRunFile(text: string, path: string, viewerSteamId: string):
     ascension: j.ascension,
     runTime: j.run_time,
     buildId: j.build_id,
+    win: j.win === true,
   });
   return parsed.success ? { ok: true, run: parsed.data } : { ok: false, reason: "unknown_format" };
 }
@@ -106,13 +116,18 @@ export function parseRunFile(text: string, path: string, viewerSteamId: string):
 export interface CharacterTally {
   characterId: string;
   a10Runs: number;
+  a10Wins: number;
   lastPlayed: number;
 }
 
-/** Count A10 runs per character, dropping duplicates (the same run saved in two profiles or synced copies). */
+/**
+ * Count A10 runs and wins per modded character, dropping duplicates (the same run saved in two profiles or synced
+ * copies). Base-game characters are left out: the site only reviews modded ones.
+ */
 export function tallyRuns(runs: RunSummary[]): { unique: RunSummary[]; byCharacter: CharacterTally[] } {
   const seen = new Set<string>();
   const unique = runs.filter((r) => {
+    if (!isModdedCharacter(r.characterId)) return false;
     const k = `${r.seed}:${r.startTime}`;
     if (seen.has(k)) return false;
     seen.add(k);
@@ -120,21 +135,11 @@ export function tallyRuns(runs: RunSummary[]): { unique: RunSummary[]; byCharact
   });
   const map = new Map<string, CharacterTally>();
   for (const r of unique) {
-    const t = map.get(r.characterId) ?? { characterId: r.characterId, a10Runs: 0, lastPlayed: 0 };
+    const t = map.get(r.characterId) ?? { characterId: r.characterId, a10Runs: 0, a10Wins: 0, lastPlayed: 0 };
     t.a10Runs++;
+    if (r.win) t.a10Wins++;
     t.lastPlayed = Math.max(t.lastPlayed, r.startTime);
     map.set(r.characterId, t);
   }
   return { unique, byCharacter: [...map.values()].sort((a, b) => b.a10Runs - a.a10Runs) };
 }
-
-export const SKIP_LABELS: Record<RunSkip, string> = {
-  not_json: "couldn’t be read",
-  unknown_format: "aren’t in a format this site understands",
-  abandoned: "were abandoned",
-  not_standard: "were custom or daily runs",
-  below_a10: "were below Ascension 10",
-  coop: "were co-op runs, which aren’t counted",
-  name_mismatch: "had a file name that doesn’t match the run inside",
-  other_account_folder: "came from another Steam account’s folder",
-};

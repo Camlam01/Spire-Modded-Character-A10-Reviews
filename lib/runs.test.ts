@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { characterName, isModdedCharacter, matchCharactersToTitle, modPrefix, parseRunFile, steamIdFromPath, tallyRuns } from "./runs.ts";
+import { characterName, isModdedCharacter, isVerified, matchCharactersToTitle, modPrefix, parseRunFile, steamIdFromPath, tallyRuns } from "./runs.ts";
 
 const ME = "76561190000000001";
 
@@ -21,11 +21,11 @@ const run = (over: Record<string, unknown> = {}) =>
     ...over,
   });
 
-test("parses a solo A10 run without its win or loss", () => {
+test("parses a solo A10 run", () => {
   const r = parseRunFile(run({ win: true }), "1792154405.run", ME);
   assert.deepEqual(r, {
     ok: true,
-    run: { characterId: "CHARACTER.THETAILOR-THE_TAILOR", seed: "X2P0GT4RVYJT", startTime: 1792154405, ascension: 10, runTime: 3861, buildId: "v0.111.0" },
+    run: { characterId: "CHARACTER.THETAILOR-THE_TAILOR", seed: "X2P0GT4RVYJT", startTime: 1792154405, ascension: 10, runTime: 3861, buildId: "v0.111.0", win: true },
   });
 });
 
@@ -44,17 +44,21 @@ test("skips runs that shouldn't count", () => {
   assert.equal(reason(run(), `SlayTheSpire2/steam/${ME}/modded/profile1/saves/history/1792154405.run`), "ok");
 });
 
-test("tallies A10 runs per character and drops duplicate copies", () => {
-  const a = parseRunFile(run(), "a.run", ME);
+test("tallies A10 runs and wins per modded character and drops duplicates and base-game runs", () => {
+  const a = parseRunFile(run({ win: true }), "a.run", ME);
   const b = parseRunFile(run(), "b.run", ME); // same run from another profile copy
   const c = parseRunFile(run({ seed: "ABC", start_time: 1 }), "c.run", ME);
   const d = parseRunFile(run({ seed: "DEF", start_time: 2, players: [{ character: "CHARACTER.IRONCLAD", id: 1 }] }), "d.run", ME);
   const { unique, byCharacter } = tallyRuns([a, b, c, d].flatMap((r) => (r.ok ? [r.run] : [])));
-  assert.equal(unique.length, 3);
-  assert.deepEqual(byCharacter, [
-    { characterId: "CHARACTER.THETAILOR-THE_TAILOR", a10Runs: 2, lastPlayed: 1792154405 },
-    { characterId: "CHARACTER.IRONCLAD", a10Runs: 1, lastPlayed: 2 },
-  ]);
+  assert.equal(unique.length, 2);
+  assert.deepEqual(byCharacter, [{ characterId: "CHARACTER.THETAILOR-THE_TAILOR", a10Runs: 2, a10Wins: 1, lastPlayed: 1792154405 }]);
+});
+
+test("verified at 10 A10 runs or 3 A10 wins", () => {
+  assert.equal(isVerified({ a10Runs: 9, a10Wins: 2 }), false);
+  assert.equal(isVerified({ a10Runs: 10, a10Wins: 0 }), true);
+  assert.equal(isVerified({ a10Runs: 3, a10Wins: 3 }), true);
+  assert.equal(isVerified(null), false);
 });
 
 test("matches Workshop titles to characters by mod prefix", () => {

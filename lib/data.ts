@@ -2,6 +2,7 @@ import "server-only";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { env } from "./env";
 import { RATE_LIMITS, WORKSHOP_REFRESH_HOURS, type RateKind } from "./limits";
+import { isModdedCharacter } from "./runs";
 import { cleanMetricNotes, cleanScores, type MetricNotes, type MetricStats, type Scores } from "./scoring";
 
 let client: SupabaseClient | null = null;
@@ -100,6 +101,8 @@ export interface ReviewView extends Author {
 /** Verified A10 runs, counted from run history files (wins and losses alike; which is never stored). */
 export interface RunStats {
   a10Runs: number;
+  /** Only used to decide verification; never shown. */
+  a10Wins: number;
   lastPlayed: string;
 }
 
@@ -336,19 +339,19 @@ export async function toggleVote(reviewId: string, steamId: string): Promise<boo
 
 /* ---------- verified runs ---------- */
 
-interface RunStatRow { steam_id: string; a10_runs: number; last_played: string }
-const toRunStats = (r: RunStatRow): RunStats => ({ a10Runs: r.a10_runs, lastPlayed: r.last_played });
+interface RunStatRow { steam_id: string; a10_runs: number; a10_wins: number; last_played: string }
+const toRunStats = (r: RunStatRow): RunStats => ({ a10Runs: r.a10_runs, a10Wins: r.a10_wins ?? 0, lastPlayed: r.last_played });
 
 export async function getRunStatsForMod(modId: string): Promise<Map<string, RunStats>> {
   const rows = check(
-    await db().from("player_mod_run_stats").select("steam_id, a10_runs, last_played").eq("mod_id", modId),
+    await db().from("player_mod_run_stats").select("steam_id, a10_runs, a10_wins, last_played").eq("mod_id", modId),
   ) as RunStatRow[];
   return new Map(rows.map((r) => [r.steam_id, toRunStats(r)]));
 }
 
 export async function getRunStats(steamId: string, modId: string): Promise<RunStats | null> {
   const row = check(
-    await db().from("player_mod_run_stats").select("steam_id, a10_runs, last_played").eq("mod_id", modId).eq("steam_id", steamId).maybeSingle(),
+    await db().from("player_mod_run_stats").select("steam_id, a10_runs, a10_wins, last_played").eq("mod_id", modId).eq("steam_id", steamId).maybeSingle(),
   ) as RunStatRow | null;
   return row ? toRunStats(row) : null;
 }
@@ -356,13 +359,14 @@ export async function getRunStats(steamId: string, modId: string): Promise<RunSt
 /** Every character a player has verified A10 runs with, and which listed mods add it. */
 export async function getCharacterRuns(steamId: string): Promise<CharacterRuns[]> {
   const [rows, mods] = await Promise.all([
-    db().from("character_runs").select("character_id, a10_runs, last_played").eq("steam_id", steamId).order("a10_runs", { ascending: false }),
+    db().from("character_runs").select("character_id, a10_runs, a10_wins, last_played").eq("steam_id", steamId).order("a10_runs", { ascending: false }),
     db().from("mods").select("id, title, character_ids").neq("character_ids", "{}"),
   ]);
   const modRows = check(mods) as { id: string; title: string; character_ids: string[] }[];
-  return (check(rows) as { character_id: string; a10_runs: number; last_played: string }[]).map((r) => ({
+  return (check(rows) as { character_id: string; a10_runs: number; a10_wins: number; last_played: string }[]).filter((r) => isModdedCharacter(r.character_id)).map((r) => ({
     characterId: r.character_id,
     a10Runs: r.a10_runs,
+    a10Wins: r.a10_wins ?? 0,
     lastPlayed: r.last_played,
     mods: modRows.filter((m) => m.character_ids.includes(r.character_id)).map((m) => ({ id: m.id, title: m.title })),
   }));
@@ -404,7 +408,7 @@ export async function knownCharacterIds(): Promise<string[]> {
 }
 
 /** Replace a player's A10 run counts for the characters in this scan. Characters not in the scan keep their counts. */
-export async function upsertCharacterRuns(steamId: string, characters: { characterId: string; a10Runs: number; lastPlayed: number }[]) {
+export async function upsertCharacterRuns(steamId: string, characters: { characterId: string; a10Runs: number; a10Wins: number; lastPlayed: number }[]) {
   if (!characters.length) return;
   check(
     await db().from("character_runs").upsert(
@@ -412,6 +416,7 @@ export async function upsertCharacterRuns(steamId: string, characters: { charact
         steam_id: steamId,
         character_id: c.characterId,
         a10_runs: c.a10Runs,
+        a10_wins: c.a10Wins,
         last_played: new Date(c.lastPlayed * 1000).toISOString(),
         updated_at: new Date().toISOString(),
       })),

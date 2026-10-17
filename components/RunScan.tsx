@@ -2,7 +2,7 @@
 
 import { useActionState, useEffect, useRef, useState, useTransition } from "react";
 import { scanRunsAction } from "@/app/actions";
-import { characterName, parseRunFile, SKIP_LABELS, tallyRuns, type RunSkip, type RunSummary } from "@/lib/runs";
+import { characterName, parseRunFile, tallyRuns, VERIFY_RULE, type RunSkip, type RunSummary } from "@/lib/runs";
 
 type Found = { file: File; path: string };
 interface Scan { files: number; runs: RunSummary[]; skips: Partial<Record<RunSkip, number>> }
@@ -95,10 +95,8 @@ export function RunScan({ viewerId, lastScanned }: { viewerId: string; lastScann
     <section className="steps scan">
       <h3>Scan your run history</h3>
       <p>
-        This lists the characters you’ve played at Ascension 10 on your profile and counts toward every mod you review.
-        Your files are read in your browser and never uploaded. Finished solo A10 runs are counted, wins and losses alike,
-        and only the totals are sent: each character’s A10 run count and the date of its latest run. Rescan whenever
-        you’ve played more; each scan updates the characters it finds.
+        Lists the modded characters you’ve played at A10 and verifies your reviews of them ({VERIFY_RULE}).
+        Counts all runs completed in full. Your files are read in your browser and never uploaded.
       </p>
       <p className="by">{lastScanned ? `Last scanned ${new Date(lastScanned).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}.` : "You haven’t scanned your runs yet."}</p>
 
@@ -153,7 +151,7 @@ export function RunScan({ viewerId, lastScanned }: { viewerId: string; lastScann
             {tally.byCharacter.length ? `: ${tally.byCharacter.map((c) => `${characterName(c.characterId)} ${c.a10Runs}`).join(", ")}` : ""}.
           </p>
           {Object.keys(scan.skips).length ? (
-            <p className="by num">Not counted: {Object.entries(scan.skips).map(([k, n]) => `${n} that ${SKIP_LABELS[k as RunSkip]}`).join(", ")}.</p>
+            <p className="by num">{Object.values(scan.skips).reduce((a, b) => a + (b ?? 0), 0)} runs weren’t counted (not completed in full, below A10, co-op or custom).</p>
           ) : null}
         </div>
       ) : null}

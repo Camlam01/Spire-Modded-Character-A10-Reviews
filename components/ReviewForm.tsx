@@ -6,6 +6,7 @@ import { CATEGORIES, METRICS } from "@/lib/metrics";
 import { formatScore, isScore, METRIC_NOTE_MAX, reviewTotal, type MetricNotes, type Scores } from "@/lib/scoring";
 import { saveReviewAction } from "@/app/actions";
 import type { RunStats } from "@/lib/data";
+import { isVerified, VERIFY_RULE } from "@/lib/runs";
 import { catStyle, Medal } from "./Medal";
 import { useMetrics } from "./MetricsProvider";
 
@@ -46,10 +47,10 @@ export function ReviewForm({ modId, modTitle, verified, existing }: Props) {
       <input type="hidden" name="metricNotes" value={JSON.stringify(metricNotes)} />
 
       <p className="notice num">
-        {verified
-          ? <>Your review will show {verified.a10Runs} verified A10 {verified.a10Runs === 1 ? "run" : "runs"} with this character. </>
-          : <>Your review will show as unverified. </>}
-        <Link href="/profile">{verified ? "Rescan to add newer runs" : "Scan your runs"}</Link>
+        {isVerified(verified)
+          ? <>Your review will show as <strong>Verified</strong>, with your {verified!.a10Runs} A10 {verified!.a10Runs === 1 ? "run" : "runs"} on this character. </>
+          : <>Your review will show as unverified until you scan runs from your profile: it needs {VERIFY_RULE}{verified ? ` (you have ${verified.a10Runs} A10 ${verified.a10Runs === 1 ? "run" : "runs"})` : ""}. </>}
+        <Link href="/profile">{verified ? "Rescan your runs" : "Scan your runs"}</Link>
       </p>
 
       {CATEGORIES.map((c) => (

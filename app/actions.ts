@@ -9,7 +9,7 @@ import { CHARACTER_COUNTS, characterName, isModdedCharacter, RUN_SUMMARY } from 
 import { autoLinkMods } from "@/lib/linking";
 import { getPlayerSummaries, getSts2Ownership, getWorkshopItem, parseWorkshopId } from "@/lib/steam";
 import {
-  deleteComment, deleteMod, deleteReview, findModByWorkshopId, getCharacterRuns, getMod, getPlayer, getReviewMeta, getRunStats,
+  deleteComment, deleteMod, deleteReview, findModByWorkshopId, getCharacterRuns, getMod, getPlayer, getReviewMeta,
   insertComment, insertMod, isUuid, linkedCharacterIds, markRunsScanned, setModCharacterIds, takeRateToken, toggleVote,
   updateOwnership, upsertCharacterRuns, upsertReview,
 } from "@/lib/data";
@@ -124,10 +124,6 @@ export async function saveReviewAction(_prev: FormState, form: FormData): Promis
 
   const notes = String(form.get("notes") ?? "").trim().slice(0, 4000);
 
-  const needed = env.reviewMinRuns;
-  if (needed > 0 && ((await getRunStats(session.steamId, modId))?.a10Runs ?? 0) < needed) {
-    return { error: `You need at least ${needed} verified A10 ${needed === 1 ? "run" : "runs"} with this character to review it. Scan your runs from your profile.` };
-  }
   const blocked = await ownershipProblem(session.steamId);
   if (blocked) return { error: blocked };
   if (!(await takeRateToken(session.steamId, "review"))) return { error: RATE_LIMITS.review.message };
@@ -176,7 +172,7 @@ export async function scanRunsAction(_prev: FormState, form: FormData): Promise<
 
   const latest = Date.now() / 1000 + DAY;
   const characters = parsed.data.characters
-    .filter((c, i, all) => all.findIndex((o) => o.characterId === c.characterId) === i)
+    .filter((c, i, all) => isModdedCharacter(c.characterId) && all.findIndex((o) => o.characterId === c.characterId) === i)
     .map((c) => ({ ...c, lastPlayed: Math.min(c.lastPlayed, Math.floor(latest)) }));
   await upsertCharacterRuns(session.steamId, characters);
   await markRunsScanned(session.steamId);

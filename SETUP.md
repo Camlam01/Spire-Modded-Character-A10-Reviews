@@ -67,7 +67,6 @@ Everything except the first three has a sensible default.
 | `STEAM_API_KEY` | Required. Player names, avatars and STS2 ownership. |
 | `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` | Required. Added for you by Vercel's Supabase connection, or by `npm run setup` locally. |
 | `ADMIN_STEAM_IDS` | Comma-separated SteamID64s who can remove mods, reviews and comments, and fix character links. |
-| `REVIEW_MIN_RUNS` | Verified A10 runs with a mod's character needed to review it. Default `3`; `0` makes verification optional. |
 | `REVIEW_OWNERSHIP` | `owners` (default) blocks players Steam shows as not owning STS2. `verified` also blocks private game lists. `anyone` turns the check off. |
 | `SITE_URL` | Only needed for a custom domain outside Vercel. On Vercel the site detects its own address, and locally it's `http://localhost:3000`. |
 | `SESSION_SECRET` | Optional. Signs login cookies; when unset, one is derived from the Supabase secret key. |
@@ -88,7 +87,7 @@ Push changes to GitHub and Vercel redeploys on its own. When a change adds a fil
 - Players can mark other players' reviews as helpful, and reviews can be sorted by most helpful, newest, or score.
 - The compare page puts up to three mods side by side, metric by metric.
 - Mod details are re-read from the Workshop in the background once a day, including the update date and subscriber count.
-- **Run verification:** each player scans their STS2 run history from their profile. The browser reads the `.run` files, counts finished solo A10 runs per character (wins and losses alike), and sends only those counts and each character's latest run date. Profiles list every character played with its A10 run count, and reviews show a badge such as "✓ 23 A10 runs". No public Steam profile is needed. A "Copy folder path" button makes picking the folder a paste into the folder window (Chrome won't let sites remember folders inside AppData, so each rescan picks it again).
+- **Run verification:** anyone signed in can review any mod. A review shows **✓ Verified** once its author has scanned their STS2 run history (from their profile) showing 10 A10 runs or 3 A10 wins with the mod's character. The browser reads the `.run` files and sends only per-character counts for modded characters: A10 runs, A10 wins and the latest run date. Only runs completed in full count. Wins decide verification but are never shown. Profiles list each modded character played with its A10 run count. No public Steam profile is needed, and a "Copy folder path" button makes picking the folder a paste into the folder window.
 - **Character linking:** mods link to their in-game character automatically by matching the Workshop title to the character's mod prefix (for example "The Tailor (Beta Branch)" → `CHARACTER.THETAILOR-THE_TAILOR`). When the title doesn't match, the first reviewer picks the character from their runs. Admins can correct links on the mod page.
 - **Spam protection:** every write is rate-limited per player (`lib/limits.ts`).
 

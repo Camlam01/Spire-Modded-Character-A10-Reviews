@@ -11,7 +11,7 @@ import { useMetrics } from "./MetricsProvider";
 import { ConfirmAction } from "./ConfirmAction";
 import { CommentThread, HelpfulButton } from "./Discussion";
 import { CharacterIdsForm } from "./CharacterLink";
-import { characterName } from "@/lib/runs";
+import { characterName, isVerified, VERIFY_RULE } from "@/lib/runs";
 
 interface Props {
   mod: ModSummary;
@@ -198,11 +198,13 @@ function ReviewCard({ r, modId, viewerId, admin, signInHref, comments }: {
             </div>
           </div>
         </div>
-        {r.verified ? (
-          <span className="badge verified num" title={`Verified from run history files. Most recent ${new Date(r.verified.lastPlayed).toLocaleDateString()}.`}>
-            ✓ {r.verified.a10Runs} A10 {r.verified.a10Runs === 1 ? "run" : "runs"}
+        {isVerified(r.verified) ? (
+          <span className="badge verified num" title={`Verified from run history files: ${VERIFY_RULE}.`}>
+            ✓ Verified · {r.verified!.a10Runs} A10 {r.verified!.a10Runs === 1 ? "run" : "runs"}
           </span>
-        ) : <span className="badge" title="This reviewer hasn’t verified any runs with this character">Unverified</span>}
+        ) : r.verified ? (
+          <span className="badge num" title={`Not verified yet: needs ${VERIFY_RULE}.`}>{r.verified.a10Runs} A10 {r.verified.a10Runs === 1 ? "run" : "runs"}</span>
+        ) : <span className="badge" title="This reviewer hasn’t scanned any runs with this character">Unverified</span>}
         {r.ownsGame ? <span className="badge ok">Owns STS2{hours != null ? ` · ${hours}h played` : ""}</span>
           : r.ownsGame === null ? <span className="badge">Game list private</span> : null}
         {mine ? (

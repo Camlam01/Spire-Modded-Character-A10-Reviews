@@ -29,8 +29,8 @@ export const CATEGORIES: Category[] = [
   ]),
   cat("mech", "Mechanics", [
     ["uniqueness", "Uniqueness", "How much do the new mechanics provide in terms of new ways to enjoy deck building?"],
-    ["compatibility", "Compatibility", "Do the new mechanics make certain elements of Spire’s challenge particularly trivial, or particularly difficult?"],
     ["mech_consistency", "Consistency", "Do mechanics behave as you would reasonably expect? Are mechanics described in the most clear and simple ways?"],
+    ["compatibility", "Compatibility", "Do the new mechanics fit well with the design of enemies in the Spire, or do they make certain challenges particularly trivial or difficult?"],
     ["completeness", "Completeness", "Does the character have a full card pool, ancient dialogue + cards, relics and potions?"],
     ["complexity", "Complexity", "Does the character sit somewhere inside or slightly above the complexity level of the base characters? Does this character’s difficulty come more from complexity of mechanics rather than the design?"],
     ["playability", "Playability", "Are the new mechanics implemented in a smooth and natural way?"],
