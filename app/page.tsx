@@ -5,9 +5,9 @@ import { siteNotReady } from "@/lib/ready";
 import { refreshStaleMods } from "@/lib/refresh";
 import { getSession } from "@/lib/session";
 
-export default async function Home({ searchParams }: { searchParams: Promise<{ signin?: string }> }) {
+export default async function Home({ searchParams }: { searchParams: Promise<{ signin?: string; deleted?: string }> }) {
   if (await siteNotReady()) return null;
-  const [{ signin }, session] = await Promise.all([searchParams, getSession()]);
+  const [{ signin, deleted }, session] = await Promise.all([searchParams, getSession()]);
   const mods = await listMods(session?.steamId ?? null);
   after(() => refreshStaleMods(50).catch((e) => console.error("Workshop refresh failed", e)));
 
@@ -20,6 +20,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ s
           interesting characters at Ascension 10. Switch metrics on or off to rebuild every total around what you care about.
         </p>
       </div>
+      {deleted === "1" ? <div className="notice">Your account and everything you posted have been deleted.</div> : null}
       {signin === "failed" ? (
         <div className="notice error">Steam sign-in didn’t complete. Try signing in again.</div>
       ) : null}

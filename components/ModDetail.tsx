@@ -11,6 +11,7 @@ import { useMetrics } from "./MetricsProvider";
 import { ConfirmAction } from "./ConfirmAction";
 import { CommentThread, HelpfulButton } from "./Discussion";
 import { CharacterIdsForm } from "./CharacterLink";
+import { ReportButton } from "./ReportButton";
 import { characterName, isVerified, VERIFY_RULE } from "@/lib/runs";
 
 interface Props {
@@ -244,6 +245,7 @@ function ReviewCard({ r, modId, viewerId, admin, signInHref, comments }: {
       <div className="review-foot">
         <HelpfulButton reviewId={r.id} count={r.helpful} voted={r.votedByMe}
           disabledReason={!viewerId ? "Sign in with Steam to vote" : mine ? "You can’t vote on your own review" : null} />
+        {viewerId && !mine ? <ReportButton targetType="review" targetId={r.id} /> : null}
         <details className="discussion inline">
           <summary>Discussion · <span className="num">{comments.length}</span></summary>
           <CommentThread modId={modId} reviewId={r.id} comments={comments} viewerId={viewerId} admin={admin} signInHref={signInHref} />

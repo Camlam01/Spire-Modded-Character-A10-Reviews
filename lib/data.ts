@@ -14,7 +14,7 @@ function db(): SupabaseClient {
 /** Every table and view the site reads. The setup check tries each one. */
 const DB_OBJECTS = [
   "players", "mods", "reviews", "comments", "review_votes", "rate_events", "character_runs",
-  "mod_metric_stats", "player_mod_run_stats", "known_characters",
+  "mod_metric_stats", "player_mod_run_stats", "known_characters", "reports",
 ] as const;
 
 export type DatabaseProblem = {
@@ -423,6 +423,102 @@ export async function upsertCharacterRuns(steamId: string, characters: { charact
       { onConflict: "steam_id,character_id" },
     ),
   );
+}
+
+/* ---------- reports ---------- */
+
+export type ReportTarget = "review" | "comment";
+
+/** Records a report. Returns false if this person already reported this item. */
+export async function insertReport(r: { targetType: ReportTarget; targetId: string; modId: string; reporter: string; reason: string }): Promise<boolean> {
+  const res = await db().from("reports").insert({
+    target_type: r.targetType, target_id: r.targetId, mod_id: r.modId, reporter: r.reporter, reason: r.reason,
+  });
+  if (res.error?.code === "23505") return false; // already reported by this person
+  if (res.error) throw new Error(`Database error: ${res.error.message}`);
+  return true;
+}
+
+export async function getCommentMeta(commentId: string) {
+  if (!isUuid(commentId)) return null;
+  return check(await db().from("comments").select("id, mod_id, steam_id").eq("id", commentId).maybeSingle()) as
+    { id: string; mod_id: string; steam_id: string } | null;
+}
+
+export async function countOpenReports(): Promise<number> {
+  const { count, error } = await db().from("reports").select("id", { count: "exact" }).is("resolved_at", null).limit(1);
+  if (error) throw new Error(`Database error: ${error.message}`);
+  return count ?? 0;
+}
+
+export interface OpenReport {
+  id: string;
+  targetType: ReportTarget;
+  targetId: string;
+  modId: string | null;
+  modTitle: string | null;
+  reason: string;
+  createdAt: string;
+  reporterName: string;
+  reportCount: number;
+  /** The reported text and its author, or null when it has already been removed. */
+  content: { text: string; authorId: string; authorName: string } | null;
+}
+
+/** Open reports, one entry per reported item (with how many people reported it), oldest first. */
+export async function listOpenReports(): Promise<OpenReport[]> {
+  const rows = check(
+    await db().from("reports")
+      .select("id, target_type, target_id, mod_id, reason, created_at, mods!reports_mod_id_fkey(title), players!reports_reporter_fkey(persona_name)")
+      .is("resolved_at", null).order("created_at", { ascending: true }).limit(500),
+  ) as unknown as {
+    id: string; target_type: ReportTarget; target_id: string; mod_id: string | null; reason: string; created_at: string;
+    mods: { title: string } | null; players: { persona_name: string } | null;
+  }[];
+
+  const reviewIds = rows.filter((r) => r.target_type === "review").map((r) => r.target_id);
+  const commentIds = rows.filter((r) => r.target_type === "comment").map((r) => r.target_id);
+  const [reviews, comments] = await Promise.all([
+    reviewIds.length
+      ? db().from("reviews").select("id, notes, steam_id, players!reviews_steam_id_fkey(persona_name)").in("id", reviewIds)
+      : Promise.resolve({ data: [], error: null }),
+    commentIds.length
+      ? db().from("comments").select("id, body, steam_id, players!comments_steam_id_fkey(persona_name)").in("id", commentIds)
+      : Promise.resolve({ data: [], error: null }),
+  ]);
+  type Row = { id: string; notes?: string; body?: string; steam_id: string; players: { persona_name: string } | null };
+  const content = new Map<string, OpenReport["content"]>();
+  for (const r of [...(check(reviews) as unknown as Row[]), ...(check(comments) as unknown as Row[])]) {
+    content.set(r.id, { text: (r.notes ?? r.body ?? "").trim() || "(scores only, no written notes)", authorId: r.steam_id, authorName: r.players?.persona_name || "Steam player" });
+  }
+
+  const byTarget = new Map<string, OpenReport>();
+  for (const r of rows) {
+    const existing = byTarget.get(r.target_id);
+    if (existing) { existing.reportCount++; continue; }
+    byTarget.set(r.target_id, {
+      id: r.id, targetType: r.target_type, targetId: r.target_id, modId: r.mod_id, modTitle: r.mods?.title ?? null,
+      reason: r.reason, createdAt: r.created_at, reporterName: r.players?.persona_name || "Steam player", reportCount: 1,
+      content: content.get(r.target_id) ?? null,
+    });
+  }
+  return [...byTarget.values()];
+}
+
+/** Mark every open report about one item as dealt with. */
+export async function resolveReports(targetId: string) {
+  check(await db().from("reports").update({ resolved_at: new Date().toISOString() }).eq("target_id", targetId).is("resolved_at", null));
+}
+
+/* ---------- account deletion ---------- */
+
+/**
+ * Remove a player and everything they wrote: their reviews (with the discussion under them), comments, votes, run
+ * counts and reports all go with the player row. Mods they added stay listed, without their name attached.
+ */
+export async function deleteAccount(steamId: string) {
+  check(await db().from("rate_events").delete().eq("steam_id", steamId));
+  check(await db().from("players").delete().eq("steam_id", steamId));
 }
 
 /* ---------- comments ---------- */

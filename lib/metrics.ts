@@ -38,11 +38,11 @@ export const CATEGORIES: Category[] = [
     ["uniqueness", "Uniqueness", "How much do the new mechanics provide in terms of new ways to enjoy deck building?", STRENGTH],
     ["completeness", "Completeness", "Does the character have a full card pool, ancient dialogue + cards, relics and potions?", YES_GOOD],
     ["complexity", "Complexity", "Does the complexity feel aligned with the complexity of the vanilla characters? Do mechanics behave as you would reasonably expect? Are they described clearly?", YES_GOOD],
+    ["compatibility", "Compatibility", "Do the new mechanics fit well with the design of enemies in the Spire?", YES_GOOD],
   ]),
   cat("bal", "A10 Balance", [
     ["difficulty", "Difficulty", "Does this character’s difficulty line up well with the base game characters?", YES_GOOD],
-    ["compatibility", "Compatibility", "Do the new mechanics fit well with the design of enemies in the Spire, or do they make certain challenges particularly trivial or difficult?", YES_GOOD],
-    ["adaptability", "Adaptability", "Does this character rely on finding cards building into a specific archetype, or do they have a strong decision space where many different approaches can win?", ["Archetype", "Many approaches"]],
+    ["adaptability", "Adaptability", "Can this character win without relying on finding cards building into a specific archetype? Do they have a strong decision space where many different approaches can win?", YES_GOOD],
     ["snowballing", "Snowballing", "Do your wins and losses with this character feel inevitable well before the end of the run? Do particular cards feel disproportionately stronger than others?", NO_GOOD],
   ]),
   cat("ref", "Enjoyment", [

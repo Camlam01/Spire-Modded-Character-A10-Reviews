@@ -9,7 +9,8 @@ import { CHARACTER_COUNTS, characterName, isModdedCharacter, RUN_SUMMARY } from 
 import { autoLinkMods } from "@/lib/linking";
 import { getPlayerSummaries, getSts2Ownership, getWorkshopItem, parseWorkshopId } from "@/lib/steam";
 import {
-  deleteComment, deleteMod, deleteReview, findModByWorkshopId, getCharacterRuns, getMod, getPlayer, getReviewMeta,
+  deleteAccount, deleteComment, deleteMod, deleteReview, findModByWorkshopId, getCharacterRuns, getCommentMeta, getMod, getPlayer,
+  getReviewMeta, insertReport, resolveReports,
   insertComment, insertMod, isUuid, linkedCharacterIds, markRunsScanned, setModCharacterIds, takeRateToken, toggleVote,
   updateOwnership, upsertCharacterRuns, upsertReview,
 } from "@/lib/data";
@@ -255,4 +256,58 @@ export async function deleteCommentAction(form: FormData) {
   if (!session || !isUuid(commentId) || !isUuid(modId)) return;
   await deleteComment(commentId, isAdmin(session) && form.get("asAdmin") === "1" ? null : session.steamId);
   revalidatePath(`/mods/${modId}`);
+}
+
+/* ---------- reports ---------- */
+
+export async function reportAction(_prev: FormState, form: FormData): Promise<FormState> {
+  const session = await getSession();
+  if (!session) return { error: "Sign in with Steam to report something." };
+  const targetType = form.get("targetType") === "comment" ? "comment" : "review";
+  const targetId = String(form.get("targetId") ?? "");
+  const reason = String(form.get("reason") ?? "").trim().slice(0, 500);
+  if (!reason) return { error: "Say briefly what’s wrong, so the admin knows what to look for." };
+
+  const target = targetType === "review" ? await getReviewMeta(targetId) : await getCommentMeta(targetId);
+  if (!target) return { error: "That was already removed." };
+  if (target.steam_id === session.steamId) return { error: "You can delete your own posts instead of reporting them." };
+  if (!(await takeRateToken(session.steamId, "report"))) return { error: RATE_LIMITS.report.message };
+
+  const added = await insertReport({ targetType, targetId: target.id, modId: target.mod_id, reporter: session.steamId, reason });
+  revalidatePath("/admin/reports");
+  return { ok: Date.now(), message: added ? "Thanks, an admin will take a look." : "You’ve already reported this. An admin will take a look." };
+}
+
+/** Admins: close the reports about an item without removing it. */
+export async function dismissReportAction(form: FormData) {
+  const session = await getSession();
+  const targetId = String(form.get("targetId") ?? "");
+  if (!isAdmin(session) || !isUuid(targetId)) return;
+  await resolveReports(targetId);
+  revalidatePath("/admin/reports");
+}
+
+/** Admins: remove a reported review or comment and close its reports. */
+export async function removeReportedAction(form: FormData) {
+  const session = await getSession();
+  const targetId = String(form.get("targetId") ?? "");
+  const modId = String(form.get("modId") ?? "");
+  if (!isAdmin(session) || !isUuid(targetId)) return;
+  if (form.get("targetType") === "comment") await deleteComment(targetId, null);
+  else await deleteReview(targetId, null);
+  await resolveReports(targetId);
+  revalidatePath("/admin/reports");
+  if (isUuid(modId)) revalidateMod(modId);
+}
+
+/* ---------- account ---------- */
+
+/** Deletes the signed-in player's account and everything they posted, then signs them out. */
+export async function deleteAccountAction() {
+  const session = await getSession();
+  if (!session) return;
+  await deleteAccount(session.steamId);
+  await clearSession();
+  revalidatePath("/", "layout");
+  redirect("/?deleted=1");
 }

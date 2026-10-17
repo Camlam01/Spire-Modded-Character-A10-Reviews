@@ -8,6 +8,8 @@ import { siteNotReady } from "@/lib/ready";
 import { characterName, isVerified, VERIFY_RULE } from "@/lib/runs";
 import { cleanScores } from "@/lib/scoring";
 import { getSession } from "@/lib/session";
+import { ConfirmAction } from "@/components/ConfirmAction";
+import { deleteAccountAction } from "@/app/actions";
 
 type Props = { params: Promise<{ steamId: string }> };
 
@@ -86,6 +88,18 @@ export default async function PlayerPage({ params }: Props) {
       ) : (
         <div className="empty"><p>No reviews yet.</p></div>
       )}
+      {isMe ? (
+        <section className="danger-zone">
+          <h3>Delete my account and data</h3>
+          <p>
+            Removes your profile, your reviews (and the discussion under them), your comments, your helpful votes and your run
+            counts, then signs you out. Mods you added stay listed, without your name. This can’t be undone.
+          </p>
+          <div className="actions">
+            <ConfirmAction label="Delete my account" prompt="Delete everything permanently?" action={deleteAccountAction} fields={{}} />
+          </div>
+        </section>
+      ) : null}
     </>
   );
 }

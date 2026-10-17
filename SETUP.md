@@ -90,6 +90,9 @@ Push changes to GitHub and Vercel redeploys on its own. When a change adds a fil
 - **Run verification:** anyone signed in can review any mod. A review shows **✓ Verified** once its author has scanned their STS2 run history (from their profile) showing 10 A10 runs or 3 A10 wins with the mod's character. The browser reads the `.run` files and sends only per-character counts for modded characters: A10 runs, A10 wins and the latest run date. Only runs completed in full count. Wins decide verification but are never shown. Profiles list each modded character played with its A10 run count. No public Steam profile is needed, and a "Copy folder path" button makes picking the folder a paste into the folder window.
 - **Character linking:** mods link to their in-game character automatically by matching the Workshop title to the character's mod prefix (for example "The Tailor (Beta Branch)" → `CHARACTER.THETAILOR-THE_TAILOR`). When the title doesn't match, the first reviewer picks the character from their runs. Admins can correct links on the mod page.
 - **Spam protection:** every write is rate-limited per player (`lib/limits.ts`).
+- **Reports:** signed-in players can report reviews and comments. Admins see a **Reports** link in the header with the number open, and can remove the post or dismiss the report at `/admin/reports`.
+- **Delete my data:** players can delete their account and everything they posted from the bottom of their profile.
+- **About and privacy:** `/about` explains scoring, verification and exactly what's stored, linked from the footer. It names the first `ADMIN_STEAM_IDS` entry as the contact.
 
 ## Project layout
 
@@ -106,6 +109,7 @@ Push changes to GitHub and Vercel redeploys on its own. When a change adds a fil
 | `lib/limits.ts` | Rate limits for adding mods, saving reviews, commenting, voting and scanning. |
 | `lib/refresh.ts` | Re-reads stale mods from the Workshop. |
 | `app/actions.ts` | Every write: mods, reviews, votes, comments, run scans, character links, signing out. |
+| `app/about/`, `app/admin/reports/` | The About and privacy page, and the admins' report queue. |
 | `app/api/auth/steam/` | The sign-in redirect and the return from Steam. |
 | `components/` | Page pieces: mod list, mod page, review form, discussion, compare table, run scan, metric switchboard. |
 | `supabase/setup.sql` | The whole database in one file, for new setups. Generated from `supabase/migrations/`. |

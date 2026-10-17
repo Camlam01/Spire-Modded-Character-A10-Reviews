@@ -5,6 +5,7 @@ import type { CommentView } from "@/lib/data";
 import { COMMENT_MAX } from "@/lib/limits";
 import { addCommentAction, deleteCommentAction, voteAction } from "@/app/actions";
 import { ConfirmAction } from "./ConfirmAction";
+import { ReportButton } from "./ReportButton";
 
 interface ThreadProps {
   modId: string;
@@ -40,6 +41,7 @@ export function CommentThread({ modId, reviewId, comments, viewerId, admin, sign
                       <ConfirmAction label={mine ? "Delete" : "Remove"} prompt={mine ? "Delete your comment?" : "Remove this comment?"}
                         action={deleteCommentAction} fields={{ commentId: c.id, modId, ...(mine ? {} : { asAdmin: "1" }) }} />
                     ) : null}
+                    {viewerId && !mine ? <ReportButton targetType="comment" targetId={c.id} /> : null}
                   </div>
                   <p>{c.body}</p>
                 </div>

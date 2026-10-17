@@ -5,8 +5,8 @@ import { MetricsProvider } from "@/components/MetricsProvider";
 import { MetricFilters } from "@/components/MetricFilters";
 import { DatabaseNotice, SetupNotice } from "@/components/SetupNotice";
 import { missingEnv } from "@/lib/env";
-import { getSession } from "@/lib/session";
-import { databaseProblem, getPlayer } from "@/lib/data";
+import { getSession, isAdmin } from "@/lib/session";
+import { countOpenReports, databaseProblem, getPlayer } from "@/lib/data";
 import { signOutAction } from "./actions";
 import "./globals.css";
 
@@ -26,7 +26,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const dbProblem = missing.length ? null : await databaseProblem();
   const ready = !missing.length && !dbProblem;
   const session = ready ? await getSession() : null;
-  const player = session ? await getPlayer(session.steamId) : null;
+  const admin = isAdmin(session);
+  const [player, openReports] = await Promise.all([
+    session ? getPlayer(session.steamId) : null,
+    admin ? countOpenReports() : 0,
+  ]);
 
   return (
     <html lang="en" className={`${display.variable} ${body.variable}`}>
@@ -38,6 +42,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               <span className="spacer" />
               {!ready ? null : session ? (
                 <div className="me">
+                  {admin ? <Link className="admin-link" href="/admin/reports">Reports{openReports ? ` (${openReports})` : ""}</Link> : null}
                   <Link className="me-link" href="/profile">
                     {player?.avatar_url ? <img src={player.avatar_url} alt="" /> : null}
                     <span>{player?.persona_name || "Your profile"}</span>
@@ -53,6 +58,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <MetricFilters />
             <section className="content">{missing.length ? <SetupNotice missing={missing} /> : dbProblem ? <DatabaseNotice problem={dbProblem} /> : children}</section>
           </main>
+          <footer className="site-foot">
+            <Link href="/about">About and privacy</Link>
+            <span>Not affiliated with Mega Crit or Valve.</span>
+          </footer>
         </MetricsProvider>
       </body>
     </html>
