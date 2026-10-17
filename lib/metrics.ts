@@ -45,7 +45,7 @@ export const CATEGORIES: Category[] = [
     ["difficulty", "Difficulty", "Does this character’s difficulty line up well with the base game characters?", YES_GOOD],
     ["adaptability", "Adaptability", "Can this character recover runs in weaker positions, or do strong rewards feel necessary to have a good chance to win? Does this character rely on finding cards building into a specific archetype, or do they have a strong decision space where many different approaches can win?", YES_GOOD],
     ["snowballing", "Snowballing", "Does this character have a lot of cards or card combos which solve a majority of the game’s challenges? Do your wins and losses feel inevitable well before the end of the run?", NO_GOOD],
-    ["outliers", "Outliers", "Does this character have cards which seem obviously much weaker or stronger than others at the same rarity? AKA: cards you always pick/skip regardless of scenario.", NO_GOOD],
+    ["outliers", "Outliers", "Does this character have many cards which seem obviously much weaker or stronger than others at the same rarity? IE: cards you always pick/skip regardless of scenario.", NO_GOOD],
   ]),
   cat("ref", "Reflection", [
     ["enjoyment", "Enjoyment", "Do you find yourself coming back to this character regularly?", YES_GOOD],
