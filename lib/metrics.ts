@@ -30,9 +30,10 @@ const cat = (key: CategoryKey, name: string, metrics: [string, string, string, [
 
 export const CATEGORIES: Category[] = [
   cat("aes", "Aesthetics", [
-    ["art", "Art", "How strong is the visual design of the character and other assets?", STRENGTH],
-    ["aes_consistency", "Consistency", "Does the art style fit appropriately with the base game’s art style?", YES_GOOD],
-    ["immersion", "Immersion", "Does the mod have animations, sound effects, and other features to increase immersion?", YES_GOOD],
+    ["art", "Art", "How strong is the design of the character, assets, UI and other visual features?", STRENGTH],
+    ["immersion", "Immersion", "Are there animations, sound effects and dialogue which make the character feel alive and part of the Spire?", YES_GOOD],
+    // Stored as "aes_consistency" from when this metric was called Consistency.
+    ["aes_consistency", "Cohesion", "How well does the visual and audio design fit with the style of the base game?", ["Poorly", "Well"]],
   ]),
   cat("mech", "Mechanics", [
     ["uniqueness", "Uniqueness", "How much do the new mechanics provide in terms of new ways to enjoy deck building?", STRENGTH],
