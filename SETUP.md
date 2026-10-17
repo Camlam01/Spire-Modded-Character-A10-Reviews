@@ -1,6 +1,6 @@
 # STS2 Character Mod Reviews: setup
 
-A Next.js site where Slay the Spire 2 players sign in with Steam and review Workshop character mods on 12 metrics for Ascension 10.
+A Next.js site where Slay the Spire 2 players sign in with Steam and review Workshop character mods on 11 metrics for Ascension 10.
 
 Setup takes about 20 minutes, most of it creating accounts. You need free accounts on **GitHub**, **Vercel** and **Supabase**, plus a Steam account that has bought something on Steam (Steam's rule for API keys).
 
@@ -95,7 +95,7 @@ Push changes to GitHub and Vercel redeploys on its own. When a change adds a fil
 
 | Path | What it is |
 | --- | --- |
-| `lib/metrics.ts` | The 12 metrics and their questions. Ids are stored in the database, so never rename one. |
+| `lib/metrics.ts` | The 11 metrics and their questions. Ids are stored in the database, so never rename one. |
 | `lib/scoring.ts` | Totals and averages, shared by server and browser. Tested in `lib/scoring.test.ts`. |
 | `lib/runs.ts` | Reads STS2 run history files in the browser and matches mod titles to characters. Tested in `lib/runs.test.ts`. |
 | `lib/steam.ts` | Steam sign-in check, player profiles, STS2 ownership and Workshop lookups. |

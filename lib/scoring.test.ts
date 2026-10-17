@@ -8,21 +8,21 @@ test("isScore accepts 0–10 in half steps only", () => {
 });
 
 test("cleanScores drops unknown metrics and bad values", () => {
-  assert.deepEqual(cleanScores({ art: 7.5, bogus: 5, immersion: 11, enjoyment: 3 }), { art: 7.5, enjoyment: 3 });
+  assert.deepEqual(cleanScores({ art: 7.5, bogus: 5, aes_consistency: 11, enjoyment: 3 }), { art: 7.5, enjoyment: 3 });
 });
 
 test("cleanMetricNotes trims, drops blanks and unknown metrics, and caps length", () => {
   const long = "x".repeat(600);
-  assert.deepEqual(cleanMetricNotes({ art: "  lovely  ", immersion: "   ", bogus: "hi", enjoyment: long, snowballing: 5 }), {
+  assert.deepEqual(cleanMetricNotes({ art: "  lovely  ", aes_consistency: "   ", bogus: "hi", enjoyment: long, snowballing: 5 }), {
     art: "lovely",
     enjoyment: "x".repeat(500),
   });
 });
 
 test("reviewTotal averages only enabled metrics that were scored", () => {
-  const s = { art: 8, immersion: 6, enjoyment: 2 };
-  assert.equal(reviewTotal(s, ["art", "immersion", "enjoyment"]), 16 / 3);
-  assert.equal(reviewTotal(s, ["art", "immersion", "snowballing"]), 7);
+  const s = { art: 8, aes_consistency: 6, enjoyment: 2 };
+  assert.equal(reviewTotal(s, ["art", "aes_consistency", "enjoyment"]), 16 / 3);
+  assert.equal(reviewTotal(s, ["art", "aes_consistency", "snowballing"]), 7);
   assert.equal(reviewTotal(s, ["snowballing"]), null);
 });
 
@@ -35,8 +35,8 @@ test("combined total is the mean of per-metric averages", () => {
 });
 
 test("category average reports off when no metric in it is enabled", () => {
-  const stats = combineReviews([{ art: 9, immersion: 7 }]);
-  assert.deepEqual(categoryAverage(stats, "aes", new Set(["art", "immersion"])), { off: false, value: 8 });
+  const stats = combineReviews([{ art: 9, aes_consistency: 7 }]);
+  assert.deepEqual(categoryAverage(stats, "aes", new Set(["art", "aes_consistency"])), { off: false, value: 8 });
   assert.deepEqual(categoryAverage(stats, "aes", new Set(["enjoyment"])), { off: true, value: null });
 });
 

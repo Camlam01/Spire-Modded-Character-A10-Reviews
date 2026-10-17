@@ -1,5 +1,5 @@
 // The review metrics. Ids are stored in the database (see supabase/migrations), so never rename one.
-// Retired metrics ("outliers", "mech_consistency", "playability") stay in old reviews but are ignored, since only the ids listed here are read.
+// Retired metrics ("outliers", "mech_consistency", "playability", "immersion") stay in old reviews but are ignored, since only the ids listed here are read.
 
 export type CategoryKey = "aes" | "mech" | "bal" | "ref";
 
@@ -31,9 +31,8 @@ const cat = (key: CategoryKey, name: string, metrics: [string, string, string, [
 export const CATEGORIES: Category[] = [
   cat("aes", "Aesthetics", [
     ["art", "Art", "How strong is the design of the character, assets, UI and other visual features?", STRENGTH],
-    ["immersion", "Immersion", "Are there animations, sound effects and dialogue which make the character feel alive and part of the Spire?", YES_GOOD],
     // Stored as "aes_consistency" from when this metric was called Consistency.
-    ["aes_consistency", "Cohesion", "How well does the visual and audio design fit with the style of the base game?", ["Poorly", "Well"]],
+    ["aes_consistency", "Cohesion", "How well does the visual design fit with the style of the base game?", ["Poorly", "Well"]],
   ]),
   cat("mech", "Mechanics", [
     ["uniqueness", "Uniqueness", "How much do the new mechanics provide in terms of new ways to enjoy deck building?", STRENGTH],
