@@ -6,6 +6,8 @@ export interface Metric {
   id: string;
   label: string;
   question: string;
+  /** Words shown under each end of the slider: [at 0, at 10]. 10 is always the best answer. */
+  scale: [string, string];
   cat: CategoryKey;
 }
 
@@ -15,35 +17,39 @@ export interface Category {
   metrics: Metric[];
 }
 
-const cat = (key: CategoryKey, name: string, metrics: [string, string, string][]): Category => ({
+const YES_GOOD: [string, string] = ["No", "Yes"];
+const NO_GOOD: [string, string] = ["Yes", "No"]; // the question asks about a problem
+const STRENGTH: [string, string] = ["Weak", "Strong"];
+
+const cat = (key: CategoryKey, name: string, metrics: [string, string, string, [string, string]][]): Category => ({
   key,
   name,
-  metrics: metrics.map(([id, label, question]) => ({ id, label, question, cat: key })),
+  metrics: metrics.map(([id, label, question, scale]) => ({ id, label, question, scale, cat: key })),
 });
 
 export const CATEGORIES: Category[] = [
   cat("aes", "Aesthetics", [
-    ["art", "Art", "How strong is the visual design of the character and other assets?"],
-    ["aes_consistency", "Consistency", "Does the art style fit appropriately with the base game’s art style?"],
-    ["immersion", "Immersion", "Does the mod have animations, sound effects, and other features to increase immersion?"],
+    ["art", "Art", "How strong is the visual design of the character and other assets?", STRENGTH],
+    ["aes_consistency", "Consistency", "Does the art style fit appropriately with the base game’s art style?", YES_GOOD],
+    ["immersion", "Immersion", "Does the mod have animations, sound effects, and other features to increase immersion?", YES_GOOD],
   ]),
   cat("mech", "Mechanics", [
-    ["uniqueness", "Uniqueness", "How much do the new mechanics provide in terms of new ways to enjoy deck building?"],
-    ["mech_consistency", "Consistency", "Do mechanics behave as you would reasonably expect? Are mechanics described in the most clear and simple ways?"],
-    ["compatibility", "Compatibility", "Do the new mechanics fit well with the design of enemies in the Spire, or do they make certain challenges particularly trivial or difficult?"],
-    ["completeness", "Completeness", "Does the character have a full card pool, ancient dialogue + cards, relics and potions?"],
-    ["complexity", "Complexity", "Does the character sit somewhere inside or slightly above the complexity level of the base characters? Does this character’s difficulty come more from complexity of mechanics rather than the design?"],
-    ["playability", "Playability", "Are the new mechanics implemented in a smooth and natural way?"],
+    ["uniqueness", "Uniqueness", "How much do the new mechanics provide in terms of new ways to enjoy deck building?", STRENGTH],
+    ["mech_consistency", "Consistency", "Do mechanics behave as you would reasonably expect? Are mechanics described in the most clear and simple ways?", YES_GOOD],
+    ["compatibility", "Compatibility", "Do the new mechanics fit well with the design of enemies in the Spire, or do they make certain challenges particularly trivial or difficult?", YES_GOOD],
+    ["completeness", "Completeness", "Does the character have a full card pool, ancient dialogue + cards, relics and potions?", YES_GOOD],
+    ["complexity", "Complexity", "Does the character sit somewhere inside or slightly above the complexity level of the base characters? Does this character’s difficulty come more from complexity of mechanics rather than the design?", YES_GOOD],
+    ["playability", "Playability", "Are the new mechanics implemented in a smooth and natural way?", YES_GOOD],
   ]),
   cat("bal", "A10 Balance", [
-    ["difficulty", "Difficulty", "Does this character’s difficulty line up well with the base game characters?"],
-    ["adaptability", "Adaptability", "Can this character recover runs in weaker positions, or do strong rewards feel necessary to have a good chance to win? Does this character rely on finding cards building into a specific archetype, or do they have a strong decision space where many different approaches can win?"],
-    ["snowballing", "Snowballing", "Does this character have a lot of cards or card combos which solve a majority of the game’s challenges? Do your wins and losses feel inevitable well before the end of the run?"],
-    ["outliers", "Outliers", "Does this character have cards which seem obviously much weaker or stronger than others at the same rarity? AKA: cards you always pick/skip regardless of scenario."],
+    ["difficulty", "Difficulty", "Does this character’s difficulty line up well with the base game characters?", YES_GOOD],
+    ["adaptability", "Adaptability", "Can this character recover runs in weaker positions, or do strong rewards feel necessary to have a good chance to win? Does this character rely on finding cards building into a specific archetype, or do they have a strong decision space where many different approaches can win?", YES_GOOD],
+    ["snowballing", "Snowballing", "Does this character have a lot of cards or card combos which solve a majority of the game’s challenges? Do your wins and losses feel inevitable well before the end of the run?", NO_GOOD],
+    ["outliers", "Outliers", "Does this character have cards which seem obviously much weaker or stronger than others at the same rarity? AKA: cards you always pick/skip regardless of scenario.", NO_GOOD],
   ]),
   cat("ref", "Reflection", [
-    ["enjoyment", "Enjoyment", "Do you find yourself coming back to this character regularly?"],
-    ["fulfilment", "Fulfilment", "How many of your runs feel satisfying? When you lose, do you feel like you have ideas of where you made mistakes? When you win, do you feel like it is usually because you made good decisions, or found strong rewards?"],
+    ["enjoyment", "Enjoyment", "Do you find yourself coming back to this character regularly?", YES_GOOD],
+    ["fulfilment", "Fulfilment", "How many of your runs feel satisfying? When you lose, do you feel like you have ideas of where you made mistakes? When you win, do you feel like it is usually because you made good decisions, or found strong rewards?", STRENGTH],
   ]),
 ];
 

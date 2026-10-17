@@ -64,6 +64,7 @@ export function ReviewForm({ modId, modTitle, verified, existing }: Props) {
                 <label htmlFor={`s-${m.id}`}>{m.label}</label>
                 <p id={`d-${m.id}`}>{m.question}</p>
                 <div className="slider">
+                  <div className="slider-track">
                   <input
                     id={`s-${m.id}`}
                     type="range" min={0} max={10} step={0.5}
@@ -71,10 +72,13 @@ export function ReviewForm({ modId, modTitle, verified, existing }: Props) {
                     className={set ? "" : "unset"}
                     aria-describedby={`d-${m.id}`}
                     aria-valuetext={set ? `${formatScore(v)} out of 10` : "Not scored"}
+                    aria-label={`${m.label}: 0 means ${m.scale[0]}, 10 means ${m.scale[1]}`}
                     onChange={(e) => setScore(m.id, Number(e.target.value))}
                     // A click on an unscored slider at its resting position still counts as scoring it.
                     onPointerUp={(e) => { if (!set) setScore(m.id, Number((e.target as HTMLInputElement).value)); }}
                   />
+                  <div className="slider-ends" aria-hidden="true"><span>0 · {m.scale[0]}</span><span>{m.scale[1]} · 10</span></div>
+                  </div>
                   <output htmlFor={`s-${m.id}`} className={set ? "" : "unset"}>{set ? formatScore(v) : "—"}</output>
                   <button type="button" className="btn small" onClick={() => setScore(m.id, null)} disabled={!set}>Clear</button>
                 </div>

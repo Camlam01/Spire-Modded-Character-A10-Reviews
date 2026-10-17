@@ -293,3 +293,5 @@ details.discussion:not(.inline) { background: var(--surface); border: 1px solid 
 kbd { font: inherit; font-size: .85em; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; background: var(--raised); }
 .dropzone.small { padding: 12px; justify-items: center; }
 .btn.disabled { opacity: .55; pointer-events: none; }
+.slider-track { display: grid; gap: 2px; min-width: 0; }
+.slider-ends { display: flex; justify-content: space-between; font-size: .76rem; color: var(--muted); letter-spacing: .02em; padding-inline: 2px; }
