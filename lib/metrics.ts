@@ -1,5 +1,5 @@
 // The review metrics. Ids are stored in the database (see supabase/migrations), so never rename one.
-// Retired metrics ("outliers") stay in old reviews but are ignored, since only the ids listed here are read.
+// Retired metrics ("outliers", "mech_consistency") stay in old reviews but are ignored, since only the ids listed here are read.
 
 export type CategoryKey = "aes" | "mech" | "bal" | "ref";
 
@@ -36,11 +36,10 @@ export const CATEGORIES: Category[] = [
   ]),
   cat("mech", "Mechanics", [
     ["uniqueness", "Uniqueness", "How much do the new mechanics provide in terms of new ways to enjoy deck building?", STRENGTH],
-    ["mech_consistency", "Consistency", "Do mechanics behave as you would reasonably expect? Are mechanics described in the most clear and simple ways?", YES_GOOD],
     ["compatibility", "Compatibility", "Do the new mechanics fit well with the design of enemies in the Spire, or do they make certain challenges particularly trivial or difficult?", YES_GOOD],
     ["completeness", "Completeness", "Does the character have a full card pool, ancient dialogue + cards, relics and potions?", YES_GOOD],
     ["complexity", "Complexity", "Does the character sit somewhere inside or slightly above the complexity level of the base characters? Does this character’s difficulty come more from complexity of mechanics rather than the design?", YES_GOOD],
-    ["playability", "Playability", "Are the new mechanics implemented in a smooth and natural way?", YES_GOOD],
+    ["playability", "Playability", "Do mechanics behave as you would reasonably expect? Are mechanics described clearly? Do the new mechanics feel smooth and natural to use?", YES_GOOD],
   ]),
   cat("bal", "A10 Balance", [
     ["difficulty", "Difficulty", "Does this character’s difficulty line up well with the base game characters?", YES_GOOD],
@@ -57,6 +56,5 @@ export const METRICS: Metric[] = CATEGORIES.flatMap((c) => c.metrics);
 export const METRIC_IDS: string[] = METRICS.map((m) => m.id);
 export const categoryOf = (key: CategoryKey): Category => CATEGORIES.find((c) => c.key === key)!;
 
-/** Label that tells the two "Consistency" metrics apart. */
-export const fullLabel = (m: Metric): string =>
-  m.label === "Consistency" ? `Consistency (${m.cat === "aes" ? "art" : "mechanics"})` : m.label;
+/** A metric's name where it appears outside its category. Kept as one place to disambiguate if names ever repeat. */
+export const fullLabel = (m: Metric): string => m.label;
