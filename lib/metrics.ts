@@ -46,8 +46,8 @@ export const CATEGORIES: Category[] = [
     ["snowballing", "Snowballing", "Do your wins and losses with this character feel inevitable well before the end of the run? Do particular cards feel disproportionately stronger than others?", NO_GOOD],
   ]),
   cat("ref", "Enjoyment", [
-    ["enjoyment", "Enjoyment", "Do you find yourself coming back to this character regularly?", YES_GOOD],
-    ["fulfilment", "Fulfilment", "How many of your runs feel satisfying? When you lose, do you feel like you have ideas of where you made mistakes? When you win, do you feel like it is usually because you made good decisions, or found strong rewards?", STRENGTH],
+    ["enjoyment", "Enjoyment", "Do you enjoy playing this character? Do you see yourself regularly coming back to them?", YES_GOOD],
+    ["fulfilment", "Fulfilment", "How many of your runs feel satisfying? When you lose, do you feel like you have ideas of where you made mistakes? When you win, do you feel like it is usually because you made good decisions, or because you got lucky?", STRENGTH],
   ]),
 ];
 
