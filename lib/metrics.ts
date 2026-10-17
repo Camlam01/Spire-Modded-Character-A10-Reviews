@@ -1,5 +1,5 @@
 // The review metrics. Ids are stored in the database (see supabase/migrations), so never rename one.
-// Retired metrics ("outliers", "mech_consistency") stay in old reviews but are ignored, since only the ids listed here are read.
+// Retired metrics ("outliers", "mech_consistency", "playability") stay in old reviews but are ignored, since only the ids listed here are read.
 
 export type CategoryKey = "aes" | "mech" | "bal" | "ref";
 
@@ -39,8 +39,7 @@ export const CATEGORIES: Category[] = [
     ["uniqueness", "Uniqueness", "How much do the new mechanics provide in terms of new ways to enjoy deck building?", STRENGTH],
     ["compatibility", "Compatibility", "Do the new mechanics fit well with the design of enemies in the Spire, or do they make certain challenges particularly trivial or difficult?", YES_GOOD],
     ["completeness", "Completeness", "Does the character have a full card pool, ancient dialogue + cards, relics and potions?", YES_GOOD],
-    ["complexity", "Complexity", "Does the character sit somewhere inside or slightly above the complexity level of the base characters? Does this character’s difficulty come more from complexity of mechanics rather than the design?", YES_GOOD],
-    ["playability", "Playability", "Do mechanics behave as you would reasonably expect? Are mechanics described clearly? Do the new mechanics feel smooth and natural to use?", YES_GOOD],
+    ["complexity", "Complexity", "Does the complexity feel aligned with the complexity of the vanilla characters? Do mechanics behave as you would reasonably expect? Are they described clearly?", YES_GOOD],
   ]),
   cat("bal", "A10 Balance", [
     ["difficulty", "Difficulty", "Does this character’s difficulty line up well with the base game characters?", YES_GOOD],
